@@ -1,0 +1,6 @@
+p			20
+shelvingTeams		5
+productAmountThresh	10
+custArrivalRate		1,5
+simulationThresh	10
+
