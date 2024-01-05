@@ -1,3 +1,10 @@
-1,101,mohammad owda,4
-2,102,abu shams,3
-3,103,yazeed hamdan,5
+4
+3
+5
+4
+6
+7
+4
+2
+5
+4

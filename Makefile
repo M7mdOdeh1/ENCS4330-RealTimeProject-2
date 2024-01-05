@@ -1,6 +1,7 @@
 CC = gcc
 CFLAGS = -g -Wall
-LIBS = -lglut -lGLU -lGL -lm -lpthread -lrt
+UILIBS = -lglut -lGLU -lGL -lm  -lrt
+LIBS = -lpthread
 
 ARGS= arguments.txt
 PRODUCTS= products.txt 
@@ -13,8 +14,11 @@ all:  project2
 #cashier: cashier.c
 #	$(CC) $(CFLAGS) $< -o $@
 
-project1: project2.c
-	$(CC) $(CFLAGS) $< -o $@
+
+project2: project2.c utilities.c
+	$(CC) $(CFLAGS) -o project2 project2.c utilities.c $(LIBS)
+
+
 
 #gui: gui.c
 #	$(CC) $(CFLAGS) $< -o $@ $(LIBS)

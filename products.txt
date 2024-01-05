@@ -1,3 +1,49 @@
-1,Product1,10,20
-2,Product2,15,25
-3,Product3,8,15
+Milk, 10, 20
+Yogurt, 15, 25
+Rice, 8, 15
+Shampoo, 10, 20
+Indomie, 15, 30
+Juice, 20, 30
+Potato, 25, 20
+Pasta, 11, 30
+Toothpaste, 20, 30
+Apple, 200, 30
+Bread, 100, 100
+Cheese, 30, 40
+Chicken, 12, 18
+Salad, 8, 12
+Peanut Butter, 15, 25
+Orange, 50, 60
+Tomato Sauce, 20, 30
+Lettuce, 10, 15
+Water Bottles, 40, 50
+Soda, 25, 35
+Dish Soap, 20, 25
+Cookies, 35, 40
+Canned Soup, 15, 20
+Paper Towels, 30, 40
+Frozen Pizza, 10, 15
+Snack Bars, 25, 30
+Ground Beef, 18, 20
+Ice Cream, 20, 25
+Frozen Vegetables, 15, 20
+Cereal Bars, 30, 35
+Fruit Snacks, 20, 25
+Spaghetti, 12, 15
+Frozen Fries, 15, 20
+Chocolate, 40, 45
+Coffee, 25, 30
+Tea Bags, 30, 35
+Muffins, 10, 12
+Toilet Paper, 40, 50
+Diapers, 35, 40
+Laundry Detergent, 20, 25
+Dishwasher Detergent, 15, 20
+Sponges, 30, 35
+Cat Food, 25, 30
+Dog Food, 30, 35
+Frozen Dinners, 12, 15
+Tissues, 40, 45
+Hand Sanitizer, 20, 25
+Toothbrushes, 15, 20
+Razor Blades, 25, 30
