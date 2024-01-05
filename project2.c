@@ -18,6 +18,9 @@ int minCustArrivalRate;
 int maxCustArrivalRate;
 struct Product products[100];
 struct Team teams[MAX_TEAMS];
+struct AllProducts allProducts;
+char *shmptr_product;
+
 
 
 char tempLine[MAX_LINE_LENGTH];
@@ -28,7 +31,7 @@ int value;
 int main(int argc, char *argv[]){
 
     struct String arguments_filename ;
-    struct String items_filename;
+    struct String products_filename;
     struct String teams_filename;
 
 	if  ( argc != 4 ) {
@@ -36,46 +39,25 @@ int main(int argc, char *argv[]){
     	fprintf(stderr, "Usage: %s message\n", *argv);
         fprintf(stderr, "Using default file names: arguments.txt and products.txt and teams.txt\n");
         strcpy(arguments_filename.str, "arguments.txt");
-        strcpy(items_filename.str, "products.txt");
+        strcpy(products_filename.str, "products.txt");
         strcpy(teams_filename.str, "teams.txt");
     	
     }	
     else {
         // Use the file names provided by the user
         strcpy(arguments_filename.str, argv[1]);
-        strcpy(items_filename.str, argv[2]);
+        strcpy(products_filename.str, argv[2]);
         strcpy(teams_filename.str, argv[3]);
     }
     	
-    // Open the arguments file
-    FILE *file1 = fopen(arguments_filename.str, "r"); 
-    if (file1 == NULL) {
-        perror("Error opening the arguments file");
-        return 1;
-    }
-
-    // Open the items file
-    FILE *file2 = fopen(items_filename.str, "r"); 
-    if (file2 == NULL) {
-        perror("Error opening the products file");
-        return 1;
-    }
-
-    // Open the teams file
-    FILE *file3 = fopen(teams_filename.str, "r"); 
-    if (file3 == NULL) {
-        perror("Error opening the teams file");
-        return 1;
-    }
-    
     // Read the arguments file
-    readArgumentsFile(file1);
+    readArgumentsFile(arguments_filename.str);
     
     // Read the items file
-    readItemsFile(file2, numProducts);
+    readProductsFile(products_filename.str, numProducts);
 
     // Read the teams file
-    readTeamsFile(file3, numShelvingTeams);
+    readTeamsFile(teams_filename.str, numShelvingTeams);
 
     
     // Print the values read from the files
@@ -87,11 +69,11 @@ int main(int argc, char *argv[]){
     printf("\n");
 
     
-    for (int i = 0; i < numProducts; i++) {
-        printf("Product %d:\n", products[i].ID);
-        printf("Name: %s\n", products[i].Name.str);
-        printf("On Shelves Amount: %d\n", products[i].onShelvesAmount);
-        printf("Storage Amount: %d\n", products[i].StorageAmount);
+    for (int i = 0; i < allProducts.numProducts; i++) {
+        printf("Product %d:\n", allProducts.products[i].ID);
+        printf("Name: %s\n", allProducts.products[i].Name.str);
+        printf("On Shelves Amount: %d\n", allProducts.products[i].onShelvesAmount);
+        printf("Storage Amount: %d\n", allProducts.products[i].StorageAmount);
         printf("\n");
     }
 
@@ -101,26 +83,20 @@ int main(int argc, char *argv[]){
         printf("\n");
     }
 
-    // Create a shared memory segment for the shelf products
-    int shmid_shelf = shmget( SHKEY_SHELF, sizeof(memory), 0666 | IPC_CREAT);
-    if (shmid == -1) {
-        perror("shmid -- parent -- creation");
-        exit(1);
+    createSharedMemory(SHKEY_PRODUCT, shmptr_product);
+
+    // Copy the all products struct to the shared memory segment
+    memcpy(shmptr_product, (char *) &allProducts, sizeof(struct AllProducts));
+
+    //print the shared memory segment
+    printf("Shared memory segment:\n");
+    for (int i = 0; i < numProducts; i++) {
+        printf("Product %d:\n", ((struct AllProducts *) shmptr_product)->products[i].ID);
+        printf("Name: %s\n", ((struct AllProducts *) shmptr_product)->products[i].Name.str);
+        printf("On Shelves Amount: %d\n", ((struct AllProducts *) shmptr_product)->products[i].onShelvesAmount);
+        printf("Storage Amount: %d\n", ((struct AllProducts *) shmptr_product)->products[i].StorageAmount);
+        printf("\n");
     }
-
-    // Attach the shared memory segment to the parent process
-    if ( (shmptr = (char *) shmat(shmid, 0, 0)) == (char *) -1 ) {
-        perror("shmptr -- parent -- attach");
-        exit(2);
-    }
-
-    memory.numItems = itemCount;
-    // Copy the array of items to the struct memory
-    memcpy(memory.items, items, sizeof(items));
-
-    // copy the memory struct to the shared memory segment
-    memcpy(shmptr, (char *) &memory, sizeof(memory));
-    
     
     
     
@@ -128,9 +104,39 @@ int main(int argc, char *argv[]){
 
 }
 
+// function to create shared memory segment and attach it to the parent process
+void createSharedMemory(int key, char *shmptr) {
+    // Create a shared memory segment for the all products struct
+    int shmid = shmget( key, sizeof(allProducts), 0666 | IPC_CREAT);
+    if (shmid == -1) {
+        perror("shmid -- parent -- creation");
+        exit(1);
+    }
+   
+    // Attach the shared memory segment to the parent process
+    if ( (shmptr_product = (char *) shmat(shmid, 0, 0)) == (char *) -1 ) {
+        perror("shmat -- parent -- attach");
+        exit(2);
+    }
+
+    
+    
+
+
+    
+}
+
 
 // function to read the arguments file
-void readArgumentsFile(FILE *file) {
+void readArgumentsFile(char *arguments_filename) {
+
+    // Open the arguments file
+    FILE *file = fopen(arguments_filename, "r"); 
+    if (file == NULL) {
+        perror("Error opening the arguments file");
+        exit(1);
+    }
+
     while (fgets(tempLine, sizeof(tempLine), file) != NULL) {
         // Split the line into variable name and value
         sscanf(tempLine, "%s %s", varName, valueStr);
@@ -167,22 +173,39 @@ void readArgumentsFile(FILE *file) {
     fclose(file); // closing the file
 }
 
-// function to read the items file and return the number of products
-void readItemsFile(FILE *file, int numProducts) {
+// function to read the products file and return the number of products
+void readProductsFile(char *items_filename, int numProducts) {
+    // Open the products file
+    FILE *file = fopen(items_filename, "r"); 
+    if (file == NULL) {
+        perror("Error opening the products file");
+        exit(1);
+    }
+
     int i = 0;
     while (fgets(tempLine, sizeof(tempLine), file) != NULL && i < numProducts) {
         struct Product product;
         product.ID = i + 1;
         sscanf(tempLine, "%[^,], %d, %d", product.Name.str, &product.onShelvesAmount, &product.StorageAmount);
-        products[i] = product;
+        allProducts.products[i] = product;
         i++;
     }
+    allProducts.numProducts = i;
+
     fclose(file); // closing the file
     
 }
 
 // function to read the teams file and return the number of teams
-void readTeamsFile(FILE *file, int numShelvingTeams) {
+void readTeamsFile(char *teams_filename, int numShelvingTeams) {
+
+    // Open the teams file
+    FILE *file = fopen(teams_filename, "r"); 
+    if (file == NULL) {
+        perror("Error opening the teams file");
+        exit(1);
+    }
+
     int i = 0;
 
     while (fgets(tempLine, sizeof(tempLine), file) != NULL && i < numShelvingTeams) {

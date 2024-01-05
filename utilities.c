@@ -6,6 +6,10 @@ to preform various tasks
 
 #include "local.h"
 
+
+struct sembuf acquire = {0, -1, SEM_UNDO}, 
+              release = {0,  1, SEM_UNDO};
+
 // trim function
 // this function removes the white spaces from the beginning and the end of a string
 char* trim(char *str) {
