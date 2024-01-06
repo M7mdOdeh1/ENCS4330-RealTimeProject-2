@@ -28,4 +28,4 @@ run: project2
 	./project2 $(ARGS) $(PRODUCTS) $(TEAMS)
 
 clean:
-	rm -f project2
+	rm -f project2 shelvingTeam customer

@@ -7,8 +7,7 @@ to preform various tasks
 #include "local.h"
 
 
-struct sembuf acquire = {0, -1, SEM_UNDO}, 
-              release = {0,  1, SEM_UNDO};
+
 
 
 // trim function
@@ -41,20 +40,3 @@ int randomInRange(int min_range, int max_range) {
     return (int) (min_range +  (rand() % (max_range - min_range)));
 }
 
-// function to acuire the semaphore
-void acquireSem(int semid, int semnum) {
-    acquire.sem_num = semnum;
-    if ( semop(semid, &acquire, 1) == -1 ) {
-        perror("semop -- acquire");
-        exit(4);
-    }
-}
-
-// function to release the semaphore
-void releaseSem(int semid, int semnum) {
-    release.sem_num = semnum;
-    if ( semop(semid, &release, 1) == -1 ) {
-        perror("semop -- release");
-        exit(5);
-    }
-}

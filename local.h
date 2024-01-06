@@ -30,8 +30,14 @@ int randomInRange(int min_range, int max_range);
 void readArgumentsFile(char *arguments_filename);
 void readProductsFile(char *items_filename, int numProducts);
 void readTeamsFile(char *teams_filename, int numShelvingTeams);
-void createSharedMemory(int key, char *shmptr, char *src); 
-void createSemaphore(int *semid, int key, int num, char *src);
+char* createSharedMemory(int key, char *src); 
+int createSemaphore(int key, int num, char *src);
+void printSharedMemory(char *shmptr, char *src);
+void deleteSemaphore(int semid);
+void deleteSharedMemory(int key, char *shmptr);
+void killChildProcesses(int pids[], int numPids);
+void exitProgram(int signum);
+
 
 struct String {
     char str[MAX_LINE_LENGTH];

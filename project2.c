@@ -32,6 +32,13 @@ char valueStr[MAX_LINE_LENGTH];
 int value;
 
 int main(int argc, char *argv[]){
+
+    // signal handler for SIGINT to call a function before exiting
+    if (signal(SIGINT, exitProgram) == SIG_ERR) {
+        perror("signal");
+        exit(1);
+    }
+
     
     srand((unsigned) getpid()); // seed for the random function with the ID of the current process
 
@@ -66,13 +73,7 @@ int main(int argc, char *argv[]){
     // Read the teams file
     readTeamsFile(teams_filename.str, numShelvingTeams);
 
-    for (int i = 0; i < allProducts.numProducts; i++) {
-        printf("Product %d:\n", allProducts.products[i].ID);
-        printf("Name: %s\n", allProducts.products[i].Name.str);
-        printf("On Shelves Amount: %d\n", allProducts.products[i].onShelvesAmount);
-        printf("Storage Amount: %d\n", allProducts.products[i].StorageAmount);
-        printf("\n");
-    }
+    
 
     for (int i = 0; i < numShelvingTeams; i++) {
         printf("Team %d:\n", teams[i].team_id);
@@ -81,23 +82,19 @@ int main(int argc, char *argv[]){
     }
 
     shmptr_product = (char *) malloc(sizeof(struct AllProducts));
-    createSharedMemory(SHKEY_PRODUCT, shmptr_product, "project2.c");
+    shmptr_product = createSharedMemory(SHKEY_PRODUCT, "project2.c");
+
+    
 
     // Copy the all products struct to the shared memory segment
     memcpy(shmptr_product, (char *) &allProducts, sizeof(struct AllProducts));
 
-    //print the shared memory segment
-    printf("Shared memory segment:\n");
-    for (int i = 0; i < numProducts; i++) {
-        printf("Product %d:\n", ((struct AllProducts *) shmptr_product)->products[i].ID);
-        printf("Name: %s\n", ((struct AllProducts *) shmptr_product)->products[i].Name.str);
-        printf("On Shelves Amount: %d\n", ((struct AllProducts *) shmptr_product)->products[i].onShelvesAmount);
-        printf("Storage Amount: %d\n", ((struct AllProducts *) shmptr_product)->products[i].StorageAmount);
-        printf("\n");
-    }
+    // print the shared memory segment
+    printSharedMemory(shmptr_product, "project2.c");
 
+   
     // Create a semaphore for the all products struct with the number of products as the number of semaphores
-    createSemaphore(&semid_product, SEMKEY_PRODUCT, allProducts.numProducts, "project2.c");
+    semid_product = createSemaphore(SEMKEY_PRODUCT, allProducts.numProducts, "project2.c");
 
     /*
     fork and exec the shelf teams processes
@@ -141,7 +138,7 @@ int main(int argc, char *argv[]){
     while (!isSimulationDone || customersPidsIndex < MAX_CUSTOMERS ) {
         // Sleep for a random amount of time between the min and max customer arrival rates
         int custArrivalRate = randomInRange(minCustArrivalRate, maxCustArrivalRate);
-        printf("Next customer comes in %d seconds\n", custArrivalRate);
+        printf("customer %d comes in %d seconds\n", customersPidsIndex, custArrivalRate);
         fflush(stdout);
         sleep(custArrivalRate);
 
@@ -181,8 +178,34 @@ int main(int argc, char *argv[]){
 }
 
 
+/*
+handler for SIGINT signal
+this function clean up IPC resources and kill all child processes before exiting
+*/
+void exitProgram(int signum) {
+    
+    printf("\nKilling all child processes...\n");
+    fflush(stdout);
 
+    // kill all the customer processes
+    killChildProcesses(customersPids, customersPidsIndex);
+    killChildProcesses(teamsPids, numShelvingTeams);
+    printf("All child processes killed\n");
 
+    printf("Cleaning up IPC resources...\n");
+    fflush(stdout);
+
+    // delete the shared memory segment for the all products struct
+    deleteSharedMemory(SHKEY_PRODUCT, shmptr_product);
+
+    // delete the semaphore for the all products struct
+    deleteSemaphore(semid_product);
+
+    printf("IPC resources cleaned up successfully\n");
+    printf("Exiting...\n");
+    fflush(stdout);
+    exit(0);
+}
 
 
 
@@ -278,7 +301,3 @@ void readTeamsFile(char *teams_filename, int numShelvingTeams) {
     fclose(file); // closing the file
 
 }
-
-
-
-

@@ -24,20 +24,20 @@ int main (int argc, char *argv[]) {
 
     // access the shared memory segment for the all products struct
     shmptr_product = (char *) malloc(sizeof(struct AllProducts));
-    createSharedMemory(SHKEY_PRODUCT, shmptr_product, "customer.c");
-
-    // Copy the all products struct from the shared memory segment
+    shmptr_product = createSharedMemory(SHKEY_PRODUCT, "customer.c");
     ptrAllProducts = (struct AllProducts *) shmptr_product;
 
+    struct String src;
+    sprintf(src.str, "customer.c -- customer %d", customer_id);
+
     // print the shared memory segment
-    printf("Shared memory segment:\n");
-    for (int i = 0; i < ptrAllProducts->numProducts; i++) {
-        printf("Product %d:\n", ptrAllProducts->products[i].ID);
-        printf("Name: %s\n", ptrAllProducts->products[i].Name.str);
-        printf("On Shelves Amount: %d\n", ptrAllProducts->products[i].onShelvesAmount);
-        printf("Storage Amount: %d\n", ptrAllProducts->products[i].StorageAmount);
-        printf("\n");
-    }
+    printSharedMemory(shmptr_product, src.str);
+
+    // access the semaphore for the all products struct
+    int semid_product = semget(SEMKEY_PRODUCT, ptrAllProducts->numProducts, 0666);
+
+    
+
 
     
 
