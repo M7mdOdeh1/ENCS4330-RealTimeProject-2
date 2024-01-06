@@ -1,6 +1,6 @@
 numProducts			20
 numShelvingTeams		5
 productAmountThresh	10
-custArrivalRate		1,5
+custArrivalRate		2,6
 simulationThresh	10
 

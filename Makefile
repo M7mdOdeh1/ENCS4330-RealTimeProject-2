@@ -5,18 +5,19 @@ LIBS = -lpthread
 
 ARGS= arguments.txt
 PRODUCTS= products.txt 
+TEAMS= teams.txt
 
-all:  project2
+all:  project2 shelvingTeam customer
 
-#customer: customer.c
-#	$(CC) $(CFLAGS) $< -o $@
+customer: customer.c
+	$(CC) $(CFLAGS) -o customer customer.c utilities.c ipcs.c $(LIBS)
 
-#cashier: cashier.c
-#	$(CC) $(CFLAGS) $< -o $@
+shelvingTeam: 
+	$(CC) $(CFLAGS) -o shelvingTeam shelvingTeam.c utilities.c ipcs.c $(LIBS)
 
 
 project2: project2.c utilities.c
-	$(CC) $(CFLAGS) -o project2 project2.c utilities.c $(LIBS)
+	$(CC) $(CFLAGS) -o project2 project2.c utilities.c ipcs.c $(LIBS)
 
 
 
@@ -24,7 +25,7 @@ project2: project2.c utilities.c
 #	$(CC) $(CFLAGS) $< -o $@ $(LIBS)
 	
 run: project2
-	./project2 $(ARGS) $(PRODUCTS)
+	./project2 $(ARGS) $(PRODUCTS) $(TEAMS)
 
 clean:
 	rm -f project2

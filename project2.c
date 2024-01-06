@@ -12,16 +12,19 @@
 int numProducts;
 int numShelvingTeams;
 int productAmountThresh;
-int custArrivalRate;
 int simulationThresh;
 int minCustArrivalRate;
 int maxCustArrivalRate;
-struct Product products[100];
+int isSimulationDone = 0;
+
+pid_t customersPids[MAX_CUSTOMERS]; // array to store the customers pids
+int customersPidsIndex = 0;
+pid_t teamsPids[MAX_TEAMS]; // array to store the teams pids
+
 struct Team teams[MAX_TEAMS];
 struct AllProducts allProducts;
 char *shmptr_product;
-
-
+int semid_product;
 
 char tempLine[MAX_LINE_LENGTH];
 char varName[MAX_LINE_LENGTH];
@@ -29,6 +32,8 @@ char valueStr[MAX_LINE_LENGTH];
 int value;
 
 int main(int argc, char *argv[]){
+    
+    srand((unsigned) getpid()); // seed for the random function with the ID of the current process
 
     struct String arguments_filename ;
     struct String products_filename;
@@ -49,6 +54,8 @@ int main(int argc, char *argv[]){
         strcpy(products_filename.str, argv[2]);
         strcpy(teams_filename.str, argv[3]);
     }
+
+    printf("getpid() = %d\n", getpid());
     	
     // Read the arguments file
     readArgumentsFile(arguments_filename.str);
@@ -59,16 +66,6 @@ int main(int argc, char *argv[]){
     // Read the teams file
     readTeamsFile(teams_filename.str, numShelvingTeams);
 
-    
-    // Print the values read from the files
-    printf("numProducts: %d\n", numProducts);
-    printf("custArrivalRate: %d-%d\n", minCustArrivalRate, maxCustArrivalRate);
-    printf("numShelvingTeams: %d\n", numShelvingTeams);
-    printf("productAmountThresh: %d\n", productAmountThresh);
-    printf("simulationThresh: %d\n", simulationThresh);
-    printf("\n");
-
-    
     for (int i = 0; i < allProducts.numProducts; i++) {
         printf("Product %d:\n", allProducts.products[i].ID);
         printf("Name: %s\n", allProducts.products[i].Name.str);
@@ -83,7 +80,8 @@ int main(int argc, char *argv[]){
         printf("\n");
     }
 
-    createSharedMemory(SHKEY_PRODUCT, shmptr_product);
+    shmptr_product = (char *) malloc(sizeof(struct AllProducts));
+    createSharedMemory(SHKEY_PRODUCT, shmptr_product, "project2.c");
 
     // Copy the all products struct to the shared memory segment
     memcpy(shmptr_product, (char *) &allProducts, sizeof(struct AllProducts));
@@ -97,34 +95,96 @@ int main(int argc, char *argv[]){
         printf("Storage Amount: %d\n", ((struct AllProducts *) shmptr_product)->products[i].StorageAmount);
         printf("\n");
     }
-    
-    
-    
+
+    // Create a semaphore for the all products struct with the number of products as the number of semaphores
+    createSemaphore(&semid_product, SEMKEY_PRODUCT, allProducts.numProducts, "project2.c");
+
+    /*
+    fork and exec the shelf teams processes
+    */
+    for (int i = 0; i < numShelvingTeams; i++) {
+        pid_t pid = fork();
+        if (pid == -1) {
+            perror("fork");
+            exit(1);
+        } else if (pid == 0) {
+            /*
+            child process
+            */
+
+            // get the number of employees and the team ID of the current team
+            int numEmployees = teams[i].num_employees;
+            int teamID = teams[i].team_id;
+
+            // Create a string array to hold the arguments for the shelfTeam process
+            char *args[4];
+            args[0] = "./shelvingTeam";
+            args[1] = (char *) malloc(sizeof(char) * 10);
+            args[2] = (char *) malloc(sizeof(char) * 10);
+            args[3] = NULL;
+
+            sprintf(args[1], "%d", teamID);
+            sprintf(args[2], "%d", numEmployees);
+
+            // exec the shelfTeam process
+            execvp(args[0], args);
+            perror("execvp");
+            exit(1);
+        } else {
+            teamsPids[i] = pid;
+        }
+    }
+
+    /*
+    fork and exec the customer processes
+    */
+    while (!isSimulationDone || customersPidsIndex < MAX_CUSTOMERS ) {
+        // Sleep for a random amount of time between the min and max customer arrival rates
+        int custArrivalRate = randomInRange(minCustArrivalRate, maxCustArrivalRate);
+        printf("Next customer comes in %d seconds\n", custArrivalRate);
+        fflush(stdout);
+        sleep(custArrivalRate);
+
+        pid_t pid = fork();
+        if (pid == -1) {
+            perror("fork");
+            exit(1);
+        } else if (pid == 0) {
+            /*
+            child process
+            */
+
+            // Create a string array to hold the arguments for the customer process
+            char *args[3];
+            args[0] = "./customer";
+            args[1] = (char *) malloc(sizeof(char) * 10);
+            args[2] = NULL;
+            
+            sprintf(args[1], "%d", customersPidsIndex);
+
+            // exec the customer process
+            execvp(args[0], args);
+            perror("execvp");
+            exit(2);
+        } else {
+            customersPids[customersPidsIndex] = pid;
+            customersPidsIndex++;
+        }
+        
+    }
+
+    if (customersPidsIndex == MAX_CUSTOMERS) {
+        printf("Maximum number of customers reached\n");
+    }
 
 
 }
 
-// function to create shared memory segment and attach it to the parent process
-void createSharedMemory(int key, char *shmptr) {
-    // Create a shared memory segment for the all products struct
-    int shmid = shmget( key, sizeof(allProducts), 0666 | IPC_CREAT);
-    if (shmid == -1) {
-        perror("shmid -- parent -- creation");
-        exit(1);
-    }
-   
-    // Attach the shared memory segment to the parent process
-    if ( (shmptr_product = (char *) shmat(shmid, 0, 0)) == (char *) -1 ) {
-        perror("shmat -- parent -- attach");
-        exit(2);
-    }
-
-    
-    
 
 
-    
-}
+
+
+
 
 
 // function to read the arguments file
@@ -210,7 +270,7 @@ void readTeamsFile(char *teams_filename, int numShelvingTeams) {
 
     while (fgets(tempLine, sizeof(tempLine), file) != NULL && i < numShelvingTeams) {
         struct Team team;
-        team.team_id = i + 1;
+        team.team_id = i;
         sscanf(tempLine, "%d", &team.num_employees);
         teams[i] = team;
         i++;

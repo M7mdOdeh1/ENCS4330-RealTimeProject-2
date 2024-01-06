@@ -10,6 +10,7 @@ to preform various tasks
 struct sembuf acquire = {0, -1, SEM_UNDO}, 
               release = {0,  1, SEM_UNDO};
 
+
 // trim function
 // this function removes the white spaces from the beginning and the end of a string
 char* trim(char *str) {
@@ -28,8 +29,6 @@ char* trim(char *str) {
 // randomInRange function
 // this function returns a random number between the min_range and the max_range
 int randomInRange(int min_range, int max_range) {
-    srand((unsigned) getpid()); // seed for the random function with the ID of the current process
-
     if (min_range == max_range) {
         return min_range;
     }
@@ -46,7 +45,7 @@ int randomInRange(int min_range, int max_range) {
 void acquireSem(int semid, int semnum) {
     acquire.sem_num = semnum;
     if ( semop(semid, &acquire, 1) == -1 ) {
-        perror("semop -- project1 -- acquire");
+        perror("semop -- acquire");
         exit(4);
     }
 }
@@ -55,7 +54,7 @@ void acquireSem(int semid, int semnum) {
 void releaseSem(int semid, int semnum) {
     release.sem_num = semnum;
     if ( semop(semid, &release, 1) == -1 ) {
-        perror("semop -- project1 -- release");
+        perror("semop -- release");
         exit(5);
     }
 }
