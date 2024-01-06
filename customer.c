@@ -36,7 +36,7 @@ int main (int argc, char *argv[]) {
     // access the semaphore for the all products struct
     int semid_product = semget(SEMKEY_PRODUCT, ptrAllProducts->numProducts, 0666);
 
-    
+    //
 
 
     
