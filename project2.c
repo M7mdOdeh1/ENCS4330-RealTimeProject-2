@@ -23,7 +23,7 @@ pid_t teamsPids[MAX_TEAMS]; // array to store the teams pids
 
 struct Team teams[MAX_TEAMS];
 struct AllProducts allProducts;
-char *shmptr_product;
+char *shmptr_product, *shmptr_team;
 int semid_product;
 
 char tempLine[MAX_LINE_LENGTH];
@@ -53,7 +53,6 @@ int main(int argc, char *argv[]){
         strcpy(arguments_filename.str, "arguments.txt");
         strcpy(products_filename.str, "products.txt");
         strcpy(teams_filename.str, "teams.txt");
-    	
     }	
     else {
         // Use the file names provided by the user
@@ -74,17 +73,15 @@ int main(int argc, char *argv[]){
     readTeamsFile(teams_filename.str, numShelvingTeams);
 
     
-
     for (int i = 0; i < numShelvingTeams; i++) {
         printf("Team %d:\n", teams[i].team_id);
         printf("Number of Employees: %d\n", teams[i].num_employees);
         printf("\n");
-    }
+    }   
 
+    // Create a shared memory segment for the all products struct
     shmptr_product = (char *) malloc(sizeof(struct AllProducts));
-    shmptr_product = createSharedMemory(SHKEY_PRODUCT, "project2.c");
-
-    
+    shmptr_product = createSharedMemory(SHKEY_PRODUCT, sizeof(struct AllProducts), "project2.c");
 
     // Copy the all products struct to the shared memory segment
     memcpy(shmptr_product, (char *) &allProducts, sizeof(struct AllProducts));
@@ -92,9 +89,13 @@ int main(int argc, char *argv[]){
     // print the shared memory segment
     printSharedMemory(shmptr_product, "project2.c");
 
-   
-    // Create a semaphore for the all products struct with the number of products as the number of semaphores
-    semid_product = createSemaphore(SEMKEY_PRODUCT, allProducts.numProducts, "project2.c");
+    // craete shared memory segment for the pid of the teams
+    shmptr_team = (char *) malloc(sizeof(pid_t) * numShelvingTeams);
+    shmptr_team = createSharedMemory(SHKEY_TEAM, sizeof(pid_t) * numShelvingTeams, "project2.c");
+
+    
+    // Create 2 semaphores one for product on shelves and one for product in storage
+    semid_product = createSemaphore(SEMKEY_PRODUCT, 2, "project2.c");
 
     /*
     fork and exec the shelf teams processes
@@ -132,6 +133,15 @@ int main(int argc, char *argv[]){
         }
     }
 
+    for (int i = 0; i < numShelvingTeams; i++) {
+        printf("Team %d pid: %d\n", i, teamsPids[i]);
+    }
+    // Copy the teams pids to the shared memory segment
+    memcpy(shmptr_team, (char *) teamsPids, sizeof(pid_t) * numShelvingTeams);
+
+
+    
+
     /*
     fork and exec the customer processes
     */
@@ -152,12 +162,18 @@ int main(int argc, char *argv[]){
             */
 
             // Create a string array to hold the arguments for the customer process
-            char *args[3];
+            char *args[5];
+
+
             args[0] = "./customer";
             args[1] = (char *) malloc(sizeof(char) * 10);
-            args[2] = NULL;
+            args[2] = (char *) malloc(sizeof(char) * 10);
+            args[3] = (char *) malloc(sizeof(char) * 10);
+            args[4] = NULL;
             
             sprintf(args[1], "%d", customersPidsIndex);
+            sprintf(args[2], "%d", productAmountThresh);
+            sprintf(args[3], "%d", numShelvingTeams);
 
             // exec the customer process
             execvp(args[0], args);

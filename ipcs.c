@@ -10,9 +10,9 @@ struct sembuf acquire = {0, -1, SEM_UNDO},
  * or access it if it's already exists
  * then attach it to the process
 */
-char* createSharedMemory(int key, char *src) {
+char* createSharedMemory(int key, int size, char *src) {
     // Create a shared memory segment for the all products struct
-    int shmid = shmget( key, sizeof(struct AllProducts), 0666 | IPC_CREAT);
+    int shmid = shmget( key, size, 0666 | IPC_CREAT);
     if (shmid == -1) {
         struct String errorSrc;
         sprintf(errorSrc.str, "shmget -- %s -- creation\n", src);
@@ -128,17 +128,19 @@ void deleteSemaphore(int semid) {
     if (semctl(semid, 0, IPC_RMID) == -1) {
         perror("semctl");
         exit(7);
-    }
+    }   
 }
 
 
 /* 
 *function to acuire the semaphore
 */
-void acquireSem(int semid, int semnum) {
+void acquireSem(int semid, int semnum, char *src) {
     acquire.sem_num = semnum;
     if ( semop(semid, &acquire, 1) == -1 ) {
-        perror("semop -- acquire");
+        struct String errorSrc;
+        sprintf(errorSrc.str, "semop -- %s -- acquire", src);
+        perror(errorSrc.str);
         exit(4);
     }
 }
@@ -146,10 +148,12 @@ void acquireSem(int semid, int semnum) {
 /* 
 *function to release the semaphore
 */
-void releaseSem(int semid, int semnum) {
+void releaseSem(int semid, int semnum, char *src) {
     release.sem_num = semnum;
     if ( semop(semid, &release, 1) == -1 ) {
-        perror("semop -- release");
+        struct String errorSrc;
+        sprintf(errorSrc.str, "semop -- %s -- release", src);
+        perror(errorSrc.str);
         exit(5);
     }
 }
