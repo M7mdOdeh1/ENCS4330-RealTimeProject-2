@@ -5,26 +5,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
-#include <sys/shm.h>
-#include <sys/sem.h>
-#include <ctype.h>
-#include <errno.h>
-#include <stdint.h> 
-#include <wait.h>
-#include <signal.h>
 
-#define MAX_CUSTOMERS 500
+
+#define MAX_CUSTOMERS 200
 #define MAX_TEAMS 100
-
 #define MAX_PRODUCTS 100
 #define MAX_LINE_LENGTH 255
-#define SHKEY_TEAM 1111 // key for shared memory for all teams
+#define SHKEY_TEAM 1111 // key for shared memory for pid of the teams
 #define SHKEY_PRODUCT 2222 // key for shared memory for all products
 #define SEMKEY_PRODUCT 3333 // key for semaphore for all products
-
+#define MSGQKEY_TEAM 1234 // key for message queue for the teams
 
 
 char* trim(char *str);
@@ -32,16 +22,11 @@ int randomInRange(int min_range, int max_range);
 void readArgumentsFile(char *arguments_filename);
 void readProductsFile(char *items_filename, int numProducts);
 void readTeamsFile(char *teams_filename, int numShelvingTeams);
-char* createSharedMemory(int key, int size, char *src);
-int createSemaphore(int key, int num, char *src);
-void printSharedMemory(char *shmptr, char *src);
-void deleteSemaphore(int semid);
-void deleteSharedMemory(int key, char *shmptr);
-void killChildProcesses(int pids[], int numPids);
 void exitProgram(int signum);
-void acquireSem(int semid, int semnum, char *src);
-void releaseSem(int semid, int semnum, char *src);
 void selectRandomProductsToBuy();
+void deleteProduct(int index);
+void employee(int *employee_id);
+int bringProductFromStorage(int productIndex);
 
 
 struct String {
@@ -52,8 +37,9 @@ struct String {
 struct Product {
     int ID;
     struct String Name;
+    int shelfCapacity;
     int onShelvesAmount;
-    int StorageAmount;
+    int storageAmount;
 };
 
 typedef struct Product Product;
@@ -77,11 +63,7 @@ struct AllTeams {
     int numTeams;
 };
 
-union semun {
-    int val;
-    struct semid_ds *buf;
-    ushort *array; 
-};
+
 
 
 #endif

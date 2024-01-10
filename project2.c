@@ -8,6 +8,7 @@
 */
 
 # include "local.h"
+# include "local2.h"
 
 int numProducts;
 int numShelvingTeams;
@@ -24,7 +25,7 @@ pid_t teamsPids[MAX_TEAMS]; // array to store the teams pids
 struct Team teams[MAX_TEAMS];
 struct AllProducts allProducts;
 char *shmptr_product, *shmptr_team;
-int semid_product;
+int semid_product, msgqid_team;
 
 char tempLine[MAX_LINE_LENGTH];
 char varName[MAX_LINE_LENGTH];
@@ -32,13 +33,6 @@ char valueStr[MAX_LINE_LENGTH];
 int value;
 
 int main(int argc, char *argv[]){
-
-    // signal handler for SIGINT to call a function before exiting
-    if (signal(SIGINT, exitProgram) == SIG_ERR) {
-        perror("signal");
-        exit(1);
-    }
-
     
     srand((unsigned) getpid()); // seed for the random function with the ID of the current process
 
@@ -60,8 +54,6 @@ int main(int argc, char *argv[]){
         strcpy(products_filename.str, argv[2]);
         strcpy(teams_filename.str, argv[3]);
     }
-
-    printf("getpid() = %d\n", getpid());
     	
     // Read the arguments file
     readArgumentsFile(arguments_filename.str);
@@ -72,13 +64,12 @@ int main(int argc, char *argv[]){
     // Read the teams file
     readTeamsFile(teams_filename.str, numShelvingTeams);
 
+    // initialize the signal handlers (SIGINT, SIGUSR1, SIGALRM)
+    initializeSignalHandlers();
     
-    for (int i = 0; i < numShelvingTeams; i++) {
-        printf("Team %d:\n", teams[i].team_id);
-        printf("Number of Employees: %d\n", teams[i].num_employees);
-        printf("\n");
-    }   
-
+    // set the alarm to the simulation threshold
+    alarm(simulationThresh*60);
+    
     // Create a shared memory segment for the all products struct
     shmptr_product = (char *) malloc(sizeof(struct AllProducts));
     shmptr_product = createSharedMemory(SHKEY_PRODUCT, sizeof(struct AllProducts), "project2.c");
@@ -89,10 +80,9 @@ int main(int argc, char *argv[]){
     // print the shared memory segment
     printSharedMemory(shmptr_product, "project2.c");
 
-    // craete shared memory segment for the pid of the teams
-    shmptr_team = (char *) malloc(sizeof(pid_t) * numShelvingTeams);
-    shmptr_team = createSharedMemory(SHKEY_TEAM, sizeof(pid_t) * numShelvingTeams, "project2.c");
 
+    // create the msg queue for the teams
+    msgqid_team = createMessageQueue(MSGQKEY_TEAM, "project2.c");
     
     // Create 2 semaphores one for product on shelves and one for product in storage
     semid_product = createSemaphore(SEMKEY_PRODUCT, 2, "project2.c");
@@ -115,14 +105,16 @@ int main(int argc, char *argv[]){
             int teamID = teams[i].team_id;
 
             // Create a string array to hold the arguments for the shelfTeam process
-            char *args[4];
+            char *args[5];
             args[0] = "./shelvingTeam";
             args[1] = (char *) malloc(sizeof(char) * 10);
             args[2] = (char *) malloc(sizeof(char) * 10);
-            args[3] = NULL;
+            args[3] = (char *) malloc(sizeof(char) * 10);
+            args[4] = NULL;
 
             sprintf(args[1], "%d", teamID);
             sprintf(args[2], "%d", numEmployees);
+            sprintf(args[3], "%d", productAmountThresh);
 
             // exec the shelfTeam process
             execvp(args[0], args);
@@ -133,14 +125,6 @@ int main(int argc, char *argv[]){
         }
     }
 
-    for (int i = 0; i < numShelvingTeams; i++) {
-        printf("Team %d pid: %d\n", i, teamsPids[i]);
-    }
-    // Copy the teams pids to the shared memory segment
-    memcpy(shmptr_team, (char *) teamsPids, sizeof(pid_t) * numShelvingTeams);
-
-
-    
 
     /*
     fork and exec the customer processes
@@ -194,6 +178,7 @@ int main(int argc, char *argv[]){
 }
 
 
+
 /*
 handler for SIGINT signal
 this function clean up IPC resources and kill all child processes before exiting
@@ -217,13 +202,59 @@ void exitProgram(int signum) {
     // delete the semaphore for the all products struct
     deleteSemaphore(semid_product);
 
+    // delete the message queue for the teams
+    deleteMessageQueue(msgqid_team);
+
     printf("IPC resources cleaned up successfully\n");
     printf("Exiting...\n");
     fflush(stdout);
     exit(0);
 }
 
+// function to initialize the signal handlers (SIGINT, SIGUSR1, SIGALRM)
+void initializeSignalHandlers() {
+    // signal handler for SIGINT to call a function before exiting
+    if (signal(SIGINT, exitProgram) == SIG_ERR) {
+        perror("signal -- SIGINT -- project2.c");
+        exit(1);
+    }
 
+    // signal handler for SIGUSR1 to indicate that that storage is out of stock
+    if (signal(SIGUSR1, catchSIGUSR1) == SIG_ERR) {
+        perror("signal -- SIGUSR1 -- project2.c");
+        exit(1);
+    }
+
+    // signal handler for alarm to indicate that the simulation time is over
+    if (signal(SIGALRM, catchSIGALRM) == SIG_ERR) {
+        perror("signal -- SIGALRM -- project2.c");
+        exit(1);
+    }
+}
+
+// function to catch SIGUSR1 signal to indicate that that storage is out of stock
+void catchSIGUSR1(int signum) {
+    printf("SIGUSR1 signal received\n");
+    printf("*********************************\n");
+    printf("**** Storage is out of stock ****\n");
+    printf("*********************************\n");
+    fflush(stdout);
+    // set the flag to indicate that the simulation is done
+    isSimulationDone = 1;
+    exitProgram(signum);
+}
+
+// function to catch SIGALRM signal to indicate that the simulation time is over
+void catchSIGALRM(int signum) {
+    printf("SIGALRM signal received\n");
+    printf("*********************************\n");
+    printf("**** Simulation time is over ****\n");
+    printf("*********************************\n");
+    fflush(stdout);
+    // set the flag to indicate that the simulation is done
+    isSimulationDone = 1;
+    exitProgram(signum);
+}
 
 
 // function to read the arguments file
@@ -285,7 +316,8 @@ void readProductsFile(char *items_filename, int numProducts) {
     while (fgets(tempLine, sizeof(tempLine), file) != NULL && i < numProducts) {
         struct Product product;
         product.ID = i + 1;
-        sscanf(tempLine, "%[^,], %d, %d", product.Name.str, &product.onShelvesAmount, &product.StorageAmount);
+        sscanf(tempLine, "%[^,], %d, %d", product.Name.str, &product.onShelvesAmount, &product.storageAmount);
+        product.shelfCapacity = product.onShelvesAmount; // set the shelf capacity to the amount of the product on shelves
         allProducts.products[i] = product;
         i++;
     }

@@ -1,6 +1,7 @@
 
 
 #include"local.h"
+#include"local2.h"
 
 struct sembuf acquire = {0, -1, SEM_UNDO}, 
               release = {0,  1, SEM_UNDO};
@@ -91,7 +92,7 @@ void printSharedMemory(char *shmptr, char *src) {
         printf("Product %d:\n", ((struct AllProducts *) shmptr)->products[i].ID);
         printf("Name: %s\n", ((struct AllProducts *) shmptr)->products[i].Name.str);
         printf("On Shelves Amount: %d\n", ((struct AllProducts *) shmptr)->products[i].onShelvesAmount);
-        printf("Storage Amount: %d\n", ((struct AllProducts *) shmptr)->products[i].StorageAmount);
+        printf("Storage Amount: %d\n", ((struct AllProducts *) shmptr)->products[i].storageAmount);
         printf("--------------------\n");
         fflush(stdout);
     }
@@ -99,6 +100,26 @@ void printSharedMemory(char *shmptr, char *src) {
     printf("\n");
 
 }
+
+// function to craete Message Queue
+int createMessageQueue(int key, char *src) {
+    int msqid = msgget(key, 0666);
+
+    // if the message queue doesn't exist create it
+    if (msqid == -1) {
+        // Create a message queue
+        msqid = msgget(key, 0666 | IPC_CREAT);
+        if (msqid == -1) {
+            struct String errorSrc;
+            sprintf(errorSrc.str, "msgget -- %s -- creation\n", src);
+            perror(errorSrc.str);
+            exit(3);
+        }
+    }
+
+    return msqid;
+}
+
 
 /* 
  * function to clean up the shared memory segment
@@ -129,6 +150,17 @@ void deleteSemaphore(int semid) {
         perror("semctl");
         exit(7);
     }   
+}
+
+/*
+ * function to delete the message queue
+*/
+void deleteMessageQueue(int msgqid) {
+    // remove the message queue
+    if (msgctl(msgqid, IPC_RMID, (struct msqid_ds *) 0) == -1) {
+        perror("msgctl");
+        exit(8);
+    }
 }
 
 

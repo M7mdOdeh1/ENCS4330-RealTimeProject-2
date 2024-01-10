@@ -4,15 +4,21 @@ this file executes the customer process
 */
 
 #include "local.h"
+#include "local2.h"
 
 void printProductInfo(struct Product product);
 
 char *shmptr_product, *shmptr_teamPids;
 struct AllProducts *ptrAllProducts;
-pid_t *teamPids;
+int msgqid_team;
+int customer_id,
+    productAmountThresh,
+    numShelvingTeams;
+int semid_product;
+struct String src;
 
-int customer_id;
-int productAmountThresh;
+
+ProductRequestMessage requestMsg;
 
 int main (int argc, char *argv[]) {
 
@@ -25,16 +31,17 @@ int main (int argc, char *argv[]) {
 
     customer_id = atoi(argv[1]);
     productAmountThresh = atoi(argv[2]); 
-    int numShelvingTeams = atoi(argv[3]);   
+    numShelvingTeams = atoi(argv[3]);   
 
-    struct String src;
     sprintf(src.str, "customer.c -- customer %d", customer_id);
 
-    // access the shared memory segment for pid of the teams
-    shmptr_teamPids = (char *) malloc(sizeof(int) * numShelvingTeams);
-    shmptr_teamPids = createSharedMemory(SHKEY_TEAM, sizeof(int) * numShelvingTeams, src.str);
+    // // access the shared memory segment for pid of the teams
+    // shmptr_teamPids = (char *) malloc(sizeof(int) * numShelvingTeams);
+    // shmptr_teamPids = createSharedMemory(SHKEY_TEAM, sizeof(int) * numShelvingTeams, src.str);
+    //teamPids = (pid_t *) shmptr_teamPids;
 
-    teamPids = (pid_t *) shmptr_teamPids;
+    // access the msg queue for the teams
+    msgqid_team = createMessageQueue(MSGQKEY_TEAM, src.str);
     
     // access the shared memory segment for the all products struct
     shmptr_product = (char *) malloc(sizeof(struct AllProducts));
@@ -45,16 +52,17 @@ int main (int argc, char *argv[]) {
     //printSharedMemory(shmptr_product, src.str);
 
     // access the semaphore for the all products struct
-    int semid_product = createSemaphore(SEMKEY_PRODUCT, 2, src.str);
+    semid_product = createSemaphore(SEMKEY_PRODUCT, 2, src.str);
 
     acquireSem(semid_product, 0, src.str);
 
     selectRandomProductsToBuy();
 
     releaseSem(semid_product, 0, src.str);
-   
 
-
+    return 0;
+    
+    
     
 
 }
@@ -94,24 +102,44 @@ void selectRandomProductsToBuy() {
                 // update the amount of the product on shelves
                 ptrAllProducts->products[j].onShelvesAmount -= amount;
 
-                /* 
-                 * if the amount of the product on shelves becomes less than the threshold
-                 * signal a random shelf team to bring more of the product from storage
-                */
-                if (ptrAllProducts->products[j].onShelvesAmount < productAmountThresh) {
-                    /*
-                    TODO: signal a random shelf team to bring more of the product from storage
-                    */
-                   
-                }
-
                 printf("customer %d bought %d of product '%s'\n", customer_id, amount, ptrAllProducts->products[j].Name.str );
                 fflush(stdout);
 
                 // print the info of the product after buying
                 printProductInfo(ptrAllProducts->products[j]);
+                
 
+                /* 
+                 * if the amount of the product on shelves becomes less than the threshold
+                 * send a message to a random team to bring more of the product
+                */
+                if (ptrAllProducts->products[j].onShelvesAmount < productAmountThresh) {
+                    // send signal to a random team to bring more of the product
+                    int randomTeamIndex = randomInRange(0, numShelvingTeams);
+                    
+                    // create the message
+                    requestMsg.msg_to = randomTeamIndex+1;
+                    requestMsg.msg_from = getpid();
+                    requestMsg.index = j;
+                    // send the message
+                    if (msgsnd(msgqid_team, &requestMsg, sizeof(requestMsg), 0) == -1) {
+                        perror("msgsnd");
+                        exit(1);
+                    }
+
+                    printf("customer %d sent a request to team %d to bring more of product '%s'\n", customer_id, randomTeamIndex, ptrAllProducts->products[j].Name.str);
+                    fflush(stdout);
+                    // receive the message from the team
+                    if (msgrcv(msgqid_team, &requestMsg, sizeof(requestMsg), getpid(), 0) == -1) {
+                        perror("msgrcv -- customer.c");
+                        exit(1);
+                    }
+
+                } 
+                
                 break;
+
+
 
             }
         }
@@ -134,7 +162,7 @@ void printProductInfo(struct Product product) {
     printf("Product %d:\t", product.ID);
     printf("Name: %s,\t", product.Name.str);
     printf("onShelvesAmount: %d,\t", product.onShelvesAmount);
-    printf("StorageAmount: %d,\n", product.StorageAmount);
+    printf("StorageAmount: %d,\n", product.storageAmount);
     printf("****************************************************************************************\n");
     printf("\n");
     fflush(stdout);

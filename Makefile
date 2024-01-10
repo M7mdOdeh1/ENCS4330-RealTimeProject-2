@@ -12,7 +12,7 @@ all:  project2 shelvingTeam customer
 customer: customer.c
 	$(CC) $(CFLAGS) -o customer customer.c utilities.c ipcs.c $(LIBS)
 
-shelvingTeam: 
+shelvingTeam: shelvingTeam.c
 	$(CC) $(CFLAGS) -o shelvingTeam shelvingTeam.c utilities.c ipcs.c $(LIBS)
 
 
