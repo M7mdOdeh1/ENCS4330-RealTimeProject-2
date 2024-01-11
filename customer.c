@@ -58,9 +58,11 @@ int main (int argc, char *argv[]) {
     positionUpdateMsg->id = customer_id;
     positionUpdateMsg->x = -1;
     positionUpdateMsg->y = -1;
+    positionUpdateMsg->state = 0;
 
+    fflush(stdout);
     // send the message to the gui to create the customer
-    if (msgsnd(msgqid_gui, positionUpdateMsg, sizeof(positionUpdateMsg), 0) == -1) {
+    if (msgsnd(msgqid_gui, positionUpdateMsg, sizeof(PositionUpdateMessage), 0) == -1) {
         perror("msgsnd -- customer.c");
         exit(1);
     }

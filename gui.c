@@ -2,7 +2,6 @@
 #include "local.h"
 #include "local2.h"
 
-#define MAX_CUSTOMERS 10
 #define MAX_EMPLOYEES 36
 #define MAX_SHELVES 10
 #define TEAM_SIZE 6
@@ -11,7 +10,7 @@ Person customers[MAX_CUSTOMERS];
 Person employees[MAX_EMPLOYEES];
 
 int msgqid_gui; // Message queue ID
-PositionUpdateMessage msg;
+PositionUpdateMessage *msg;
 
 // Function to draw a rectangle
 void drawRectangle(float x, float y, float width, float height, float r, float g, float b) {
@@ -67,22 +66,25 @@ void drawPalestinianFlag(float x, float y, float width, float height) {
 void drawCheckeredFloor() {
     int tileSize = 50;
     for (int x = 0; x < 980; x += tileSize) {
-        for (int y = 0; y < 600; y += tileSize) {
+        for (int y = 0; y < 650; y += tileSize) {
             float color = (x / tileSize + y / tileSize) % 2 * 0.5f; // Checkerboard pattern
             drawRectangle(x, y, tileSize, tileSize, color, color, color);
         }
     }
 }
 
+
 // Function to initialize positions for customers and employees
 void initPositions() {
     // access the msg queue for the gui
-    //msgqid_gui = createMessageQueue(MSGQKEY_GUI, "gui.c");
+    msgqid_gui = createMessageQueue(MSGQKEY_GUI, "gui.c");
+
+    msg = (PositionUpdateMessage *) malloc(sizeof(PositionUpdateMessage));
 
     // Initialize customer positions
     for (int i = 0; i < MAX_CUSTOMERS; i++) {
-        customers[i].x = 50.0f;
-        customers[i].y = 100.0f + i * 45.0f;
+        customers[i].x = 0.0f;
+        customers[i].y = 0.0f;
     }
 
     // Initialize employee positions
@@ -145,8 +147,8 @@ void drawSupermarketLayout(){
     drawRectangle(300.0f, 80.0f, 200.0f, 440.0f, 0.2f, 0.2f, 0.3f); 
 
     // Draw Palestinian flag above the Products block with the same width as the item block
-    drawPalestinianFlag(300.0f, 520.0f, 200.0f, 40.0f); // Flag width same as Products block
-    drawPalestinianFlag(800.0f, 520.0f, 150.0f, 40.0f); // Flag width same as Products block
+    drawPalestinianFlag(300.0f, 520.0f, 200.0f, 70.0f); // Flag width same as Products block
+    drawPalestinianFlag(800.0f, 520.0f, 150.0f, 60.0f); // Flag width same as Products block
     // Draw text on the Product block
     drawText("Products", 350.0f, 490.0f, GLUT_BITMAP_TIMES_ROMAN_24);
 
@@ -176,18 +178,24 @@ void drawSupermarketLayout(){
 
 // Display callback
 void display() {
+    
     glClear(GL_COLOR_BUFFER_BIT);
-  
-    sleep(5);
-    // while (msgrcv(msgqid_gui, &msg, sizeof(msg) - sizeof(long), MSG_POS_UPDATE, 0) != -1) {
-    //     if (msg.personType == 1) { // Check if the message is for a customer
-    //         // move the customer
+   
+    while (msgrcv(msgqid_gui, msg, sizeof(PositionUpdateMessage), MSG_POS_UPDATE, IPC_NOWAIT) != -1) {
+    
+        if (msg->personType == 1) { // Check if the message is for a customer
+            printf("positionUpdateMsg: %ld, %d, %d, %d, %d\n", msg->msgType, msg->personType, msg->id, msg->x, msg->y);
+            fflush(stdout);
+            // move the customer
+            moveCustomer(msg->id, msg->x, msg->y);
 
-    //     } else if (msg.personType == 2) { // Check if the message is for a team
-    //         employees[msg.id].x = msg.x;
-    //         employees[msg.id].y = msg.y;
-    //     }
-    // }
+         
+
+        } else if (msg->personType == 2) { // Check if the message is for a team
+            employees[msg->id].x = msg->x;
+            employees[msg->id].y = msg->y;
+        }
+    }
 
 
     // Draw the supermarket layout
@@ -195,17 +203,18 @@ void display() {
 
     glutSwapBuffers();
 }
-
+int temp1 = 0;
 // move the customer
 void moveCustomer(int id, int x, int y) {
+   
     if (x<0 || y<0) {
+
+
         // move the customer to the market
         customers[id].x = 50.0f;
         customers[id].y = 100.0f + id * 45.0f;
     } else {
-        // move the customer to the shelf
-        customers[id].x = 280.0f + x * 20.0f;
-        customers[id].y = 100.0f + y * 45.0f;
+        
     }
 }
 
@@ -213,7 +222,7 @@ void moveCustomer(int id, int x, int y) {
 int main(int argc, char **argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-    glutInitWindowSize(800, 600);
+    glutInitWindowSize(980, 650);
     glutCreateWindow("Supermarket Simulation");
 
     // Initialize positions
@@ -223,11 +232,16 @@ int main(int argc, char **argv) {
     glClearColor(0.0, 0.0, 0.0, 1.0);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluOrtho2D(0.0, 980.0, 0.0, 600.0); // Updated to match the new window size
+    gluOrtho2D(0.0, 980.0, 0.0, 650.0); // Updated to match the new window size
 
 
     glutDisplayFunc(display);
+
+    glutIdleFunc(display);
+
     glutMainLoop();
 
     return 0;
 }
+
+
