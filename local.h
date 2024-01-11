@@ -27,6 +27,7 @@ void selectRandomProductsToBuy();
 void deleteProduct(int index);
 void employee(int *employee_id);
 int bringProductFromStorage(int productIndex);
+void initializeIPCResources();
 
 
 struct String {

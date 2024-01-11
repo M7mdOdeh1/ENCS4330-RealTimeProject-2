@@ -51,9 +51,9 @@ int main (int argc, char *argv[]) {
     while (msgrcv (msgqid_team, requestMsg, sizeof(ProductRequestMessage), team_id+1, 0) != -1) {
  
         int customer_id = requestMsg->msg_from;
-        int productIndex = requestMsg->index;
+        productIndex = requestMsg->index;
             
-        printf("Team %d: received request for product %d\n", team_id, productIndex);
+        printf("Team %d: received request for product index %d\n", team_id, productIndex);
         fflush(stdout);
         
         // check if the product is available
@@ -62,7 +62,6 @@ int main (int argc, char *argv[]) {
             product from the storage to the rolling cart */
             rollingCartAmount = bringProductFromStorage(productIndex);
             
-
             // create thread for each employee
             for (int i = 0; i < num_employees; i++) {
                 pthread_create(&employees[i], NULL, (void*)employee, (void*)&i);
@@ -81,8 +80,7 @@ int main (int argc, char *argv[]) {
             fflush(stdout);
 
             // delete the product from the shared memory segment
-            deleteProduct(productIndex);
-        
+            deleteProduct(productIndex);        
 
         }
         // if the product is not available in the storage but is available on the shelves (less than the threshold)
@@ -107,8 +105,7 @@ int main (int argc, char *argv[]) {
             perror("msgsnd -- shelvingteam.c");
             exit(1);
         }
-        
-        
+            
         
     }
     
@@ -144,10 +141,11 @@ function to simulate the employee working
 void employee(int *employee_id) {
     printf("Employee %d: started working\n", *employee_id);
     fflush(stdout);
-
+     
     // while there is still product on the rolling cart
     while (1) {
         pthread_mutex_lock(&mutex_rollingCartAmount);
+       
 
         // Check if there is a product on the rolling cart
         if (rollingCartAmount <= 0) {
@@ -179,9 +177,9 @@ void deleteProduct(int index) {
     ptrAllProducts->products[index] = ptrAllProducts->products[ptrAllProducts->numProducts - 1];
     ptrAllProducts->numProducts--;
 
-    printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
-    printf("$   Team %d: deleted product %d  $\n", index, ptrAllProducts->numProducts);
-    printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+    printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+    printf("$$   Team %d: deleted product %d  $$\n", index, ptrAllProducts->numProducts);
+    printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
     fflush(stdout);
 
     // check if the storage is out of stock

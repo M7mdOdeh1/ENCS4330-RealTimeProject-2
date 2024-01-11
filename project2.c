@@ -9,6 +9,7 @@
 
 # include "local.h"
 # include "local2.h"
+# include "gui.h"
 
 int numProducts;
 int numShelvingTeams;
@@ -25,7 +26,7 @@ pid_t teamsPids[MAX_TEAMS]; // array to store the teams pids
 struct Team teams[MAX_TEAMS];
 struct AllProducts allProducts;
 char *shmptr_product, *shmptr_team;
-int semid_product, msgqid_team;
+int semid_product, msgqid_team, msgqid_gui;
 
 char tempLine[MAX_LINE_LENGTH];
 char varName[MAX_LINE_LENGTH];
@@ -70,32 +71,18 @@ int main(int argc, char *argv[]){
     // set the alarm to the simulation threshold
     alarm(simulationThresh*60);
     
-    // Create a shared memory segment for the all products struct
-    shmptr_product = (char *) malloc(sizeof(struct AllProducts));
-    shmptr_product = createSharedMemory(SHKEY_PRODUCT, sizeof(struct AllProducts), "project2.c");
-
-    // Copy the all products struct to the shared memory segment
-    memcpy(shmptr_product, (char *) &allProducts, sizeof(struct AllProducts));
-
-    // print the shared memory segment
-    printSharedMemory(shmptr_product, "project2.c");
-
-
-    // create the msg queue for the teams
-    msgqid_team = createMessageQueue(MSGQKEY_TEAM, "project2.c");
+    // initialize IPCs resources (shared memory, semaphores, message queues)
+    initializeIPCResources();
     
-    // Create 2 semaphores one for product on shelves and one for product in storage
-    semid_product = createSemaphore(SEMKEY_PRODUCT, 2, "project2.c");
-
     /*
     fork and exec the shelf teams processes
     */
     for (int i = 0; i < numShelvingTeams; i++) {
-        pid_t pid = fork();
-        if (pid == -1) {
+        pid_t pid_team = fork();
+        if (pid_team == -1) {
             perror("fork");
             exit(1);
-        } else if (pid == 0) {
+        } else if (pid_team == 0) {
             /*
             child process
             */
@@ -121,15 +108,37 @@ int main(int argc, char *argv[]){
             perror("execvp");
             exit(1);
         } else {
-            teamsPids[i] = pid;
+            teamsPids[i] = pid_team;
         }
+    }
+
+    /*
+    fork and exec the gui process
+    */
+    pid_t pid_gui = fork();
+    if (pid_gui == -1) {
+        perror("fork");
+        exit(1);
+    } else if (pid_gui == 0) {
+        /*
+        child process
+        */
+
+        // exec the gui process
+        execlp("./gui", "./gui", NULL);
+        perror("execlp");
+        exit(1);
+    } else {
+        // parent process
+        printf("GUI process created\n");
+        fflush(stdout);
     }
 
 
     /*
     fork and exec the customer processes
     */
-    while (!isSimulationDone || customersPidsIndex < MAX_CUSTOMERS ) {
+    while ( !isSimulationDone && customersPidsIndex < MAX_CUSTOMERS) {
         // Sleep for a random amount of time between the min and max customer arrival rates
         int custArrivalRate = randomInRange(minCustArrivalRate, maxCustArrivalRate);
         printf("customer %d comes in %d seconds\n", customersPidsIndex, custArrivalRate);
@@ -172,12 +181,37 @@ int main(int argc, char *argv[]){
 
     if (customersPidsIndex == MAX_CUSTOMERS) {
         printf("Maximum number of customers reached\n");
+        fflush(stdout);
+        exitProgram(0);
     }
 
 
 }
 
+/*
+function to initialize IPCs resources (shared memory, semaphores, message queues)
+*/
+void initializeIPCResources() {
+    // Create a shared memory segment for the all products struct
+    shmptr_product = (char *) malloc(sizeof(struct AllProducts));
+    shmptr_product = createSharedMemory(SHKEY_PRODUCT, sizeof(struct AllProducts), "project2.c");
 
+    // Copy the all products struct to the shared memory segment
+    memcpy(shmptr_product, (char *) &allProducts, sizeof(struct AllProducts));
+
+    // print the shared memory segment
+    printSharedMemory(shmptr_product, "project2.c");
+
+    // create the msg queue for the teams
+    msgqid_team = createMessageQueue(MSGQKEY_TEAM, "project2.c");
+
+    // create the msg queue for the gui
+    msgqid_gui = createMessageQueue(MSGQKEY_GUI, "project2.c");
+    
+    // Create 2 semaphores one for product on shelves and one for product in storage
+    semid_product = createSemaphore(SEMKEY_PRODUCT, 2, "project2.c");
+
+}
 
 /*
 handler for SIGINT signal
@@ -204,6 +238,9 @@ void exitProgram(int signum) {
 
     // delete the message queue for the teams
     deleteMessageQueue(msgqid_team);
+
+    // delete the message queue for the gui
+    deleteMessageQueue(msgqid_gui);
 
     printf("IPC resources cleaned up successfully\n");
     printf("Exiting...\n");
@@ -313,7 +350,7 @@ void readProductsFile(char *items_filename, int numProducts) {
     }
 
     int i = 0;
-    while (fgets(tempLine, sizeof(tempLine), file) != NULL && i < numProducts) {
+    while (fgets(tempLine, sizeof(tempLine), file) != NULL && i < numProducts && i < MAX_PRODUCTS) {
         struct Product product;
         product.ID = i + 1;
         sscanf(tempLine, "%[^,], %d, %d", product.Name.str, &product.onShelvesAmount, &product.storageAmount);
@@ -339,7 +376,7 @@ void readTeamsFile(char *teams_filename, int numShelvingTeams) {
 
     int i = 0;
 
-    while (fgets(tempLine, sizeof(tempLine), file) != NULL && i < numShelvingTeams) {
+    while (fgets(tempLine, sizeof(tempLine), file) != NULL && i < numShelvingTeams && i < MAX_TEAMS) {
         struct Team team;
         team.team_id = i;
         sscanf(tempLine, "%d", &team.num_employees);

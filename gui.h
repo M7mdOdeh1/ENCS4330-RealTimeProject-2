@@ -6,7 +6,10 @@ this file used to define structs and constants related for gui.c (graphical user
 #ifndef GUI_H
 #define GUI_H
 
-#define MSGQKEY_TEAM 
+#include <GL/glut.h>
+#include <math.h>
+
+#define MSGQKEY_GUI 5555
 
 // Structure for both Custmers and Employees
 typedef struct {
@@ -18,10 +21,11 @@ typedef struct {
 #define MSG_POS_UPDATE 1
 
 typedef struct {
-    long msgType; // Message type, used to filter messages
-    int id;       // Identifier for cashier or customer
-    int x, y;   // Position coordinates
-    int state;    // State (e.g., busy, idle for cashier; shopping, in queue for customer)
+    long msgType; // type of the message
+    int personType; // 1 for customer, 2 for team
+    int id;       // id of the customer or team
+    int x, y;   // product index and quantity
+    int state;    // 
 } PositionUpdateMessage;
 
 
