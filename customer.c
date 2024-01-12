@@ -16,7 +16,8 @@ int semid_product;
 
 int customer_id,
     productAmountThresh,
-    numShelvingTeams;
+    numShelvingTeams,
+    buyTime;
 struct String src;
 
 PositionUpdateMessage *positionUpdateMsg;
@@ -26,14 +27,15 @@ int main (int argc, char *argv[]) {
 
     srand((unsigned) getpid()); // seed for the random function with the ID of the current process
     
-    if (argc != 4) {
+    if (argc != 5) {
         fprintf(stderr, "Usage: %s customer_id\n", *argv);
         exit(1);
     }
 
     customer_id = atoi(argv[1]);
     productAmountThresh = atoi(argv[2]); 
-    numShelvingTeams = atoi(argv[3]);   
+    numShelvingTeams = atoi(argv[3]);  
+    buyTime = atoi(argv[4]); 
 
     sprintf(src.str, "customer.c -- customer %d", customer_id);
 
@@ -52,7 +54,7 @@ int main (int argc, char *argv[]) {
     semid_product = createSemaphore(SEMKEY_PRODUCT, 2, src.str);
 
 
-    sendPositionUpdateMsg(-1, -1);
+    sendPositionUpdateMsg(-1, -1, 0);
 
     acquireSem(semid_product, 0, src.str);
 
@@ -110,8 +112,8 @@ void selectRandomProductsToBuy() {
                 printProductInfo(ptrAllProducts->products[j]);
 
                 // send a message to the gui to update the position of the customer
-                sendPositionUpdateMsg(-1, productID);
-                sleep(1);
+                sendPositionUpdateMsg(-1, productID, 0);
+                sleep(buyTime);
                 
                 /* 
                  * if the amount of the product on shelves becomes less than the threshold
@@ -152,7 +154,7 @@ void selectRandomProductsToBuy() {
 
     }
     // send a message to the gui to update the position of the customer
-    sendPositionUpdateMsg(1, -1);
+    sendPositionUpdateMsg(1, -1, 0);
 
 
 }
@@ -175,7 +177,7 @@ void printProductInfo(struct Product product) {
 /*
  * function to send a message to the gui to update the position of the customer
 */
-void sendPositionUpdateMsg(int x, int y) {
+void sendPositionUpdateMsg(int x, int y, int state) {
     positionUpdateMsg = (PositionUpdateMessage *) malloc(sizeof(PositionUpdateMessage));
     positionUpdateMsg->msgType = MSG_POS_UPDATE;
     positionUpdateMsg->personType = 1; // 1 for customer

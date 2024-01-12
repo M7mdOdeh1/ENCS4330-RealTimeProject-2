@@ -11,7 +11,6 @@ this file used to define structs and constants related for gui.c (graphical user
 
 #define MSGQKEY_GUI 5555
 #define MAX_EMPLOYEES 10 // maximum number of employees in the team
-#define MAX_SHELVES 10
 
 
 void moveCustomer(int id, int x, int y);
@@ -25,9 +24,10 @@ void drawArrowWithText();
 void initPositions();
 void drawSupermarketLayout();
 void drawCheckeredFloor();
-void sendPositionUpdateMsg(int x, int y);
 int findProductIndex(int productID);
-void moveTeam(int id, int x, int y);
+void sendPositionUpdateMsg(int x, int y, int state);
+void moveTeam(int id, int x, int y, int state);
+void drawSouthAfricanFlag(float x, float y, float width, float height);
 
 
 // Structure for both Custmers and Employees
@@ -42,6 +42,7 @@ typedef Object ProductObject;
 
 typedef struct {
     Employee employees[MAX_EMPLOYEES];
+    int rollingCartAmount;
 } TeamObject;
 
 #define MSG_POS_UPDATE 1

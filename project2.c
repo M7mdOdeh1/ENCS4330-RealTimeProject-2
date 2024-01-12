@@ -17,6 +17,10 @@ int productAmountThresh;
 int simulationThresh;
 int minCustArrivalRate;
 int maxCustArrivalRate;
+int managerTimeToFillCart;
+int employeeFillTime;
+int custBuyTimeMin;
+int custBuyTimeMax;
 int isSimulationDone = 0;
 
 pid_t customersPids[MAX_CUSTOMERS]; // array to store the customers pids
@@ -85,10 +89,17 @@ int main(int argc, char *argv[]){
         /*
         child process
         */
-
         // exec the gui process
-        execlp("./gui", "./gui", NULL);
-        perror("execlp");
+
+        char *args[3];
+        args[0] = "./gui";
+        args[1] = (char *) malloc(sizeof(char) * 10);
+        args[2] = NULL;
+        execvp(args[0], args);
+        sprintf(args[1], "%d", productAmountThresh);
+
+        perror("execvp -- gui");
+
         exit(1);
     } else {
         // parent process
@@ -114,16 +125,20 @@ int main(int argc, char *argv[]){
             int teamID = teams[i].team_id;
 
             // Create a string array to hold the arguments for the shelfTeam process
-            char *args[5];
+            char *args[7];
             args[0] = "./shelvingTeam";
             args[1] = (char *) malloc(sizeof(char) * 10);
             args[2] = (char *) malloc(sizeof(char) * 10);
             args[3] = (char *) malloc(sizeof(char) * 10);
-            args[4] = NULL;
+            args[4] = (char *) malloc(sizeof(char) * 10);
+            args[5] = (char *) malloc(sizeof(char) * 10);
+            args[6] = NULL;
 
             sprintf(args[1], "%d", teamID);
             sprintf(args[2], "%d", numEmployees);
             sprintf(args[3], "%d", productAmountThresh);
+            sprintf(args[4], "%d", managerTimeToFillCart);
+            sprintf(args[5], "%d", employeeFillTime);
 
             // exec the shelfTeam process
             execvp(args[0], args);
@@ -154,19 +169,22 @@ int main(int argc, char *argv[]){
             child process
             */
 
-            // Create a string array to hold the arguments for the customer process
-            char *args[5];
+            int buyTime = randomInRange(custBuyTimeMin, custBuyTimeMax);
 
+            // Create a string array to hold the arguments for the customer process
+            char *args[6];
 
             args[0] = "./customer";
             args[1] = (char *) malloc(sizeof(char) * 10);
             args[2] = (char *) malloc(sizeof(char) * 10);
             args[3] = (char *) malloc(sizeof(char) * 10);
-            args[4] = NULL;
+            args[4] = (char *) malloc(sizeof(char) * 10);
+            args[5] = NULL;
             
             sprintf(args[1], "%d", customersPidsIndex);
             sprintf(args[2], "%d", productAmountThresh);
             sprintf(args[3], "%d", numShelvingTeams);
+            sprintf(args[4], "%d", buyTime);
 
             // exec the customer process
             execvp(args[0], args);
@@ -334,7 +352,21 @@ void readArgumentsFile(char *arguments_filename) {
             productAmountThresh = value;
         } else if (strcmp(varName, "simulationThresh") == 0) {
           simulationThresh = value;
-        } 
+        } else if (strcmp(varName, "managerTimeToFillCart") == 0) {
+            managerTimeToFillCart = value;
+        } else if (strcmp(varName, "employeeFillTime") == 0) {
+            employeeFillTime = value;
+        } else if (strcmp(varName, "custBuyTime") == 0) {
+            custBuyTimeMin = min;
+            custBuyTimeMax = max;
+        } else {
+            printf("Invalid variable name: %s\n", varName);
+            fflush(stdout);
+        }
+
+//         managerTimeToFillCart   1
+// employeeFillTime    1
+// custBuyTime         1,2
         
     }
     fclose(file); // closing the file

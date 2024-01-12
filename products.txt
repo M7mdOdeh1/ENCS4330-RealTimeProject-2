@@ -1,23 +1,23 @@
-Milk, 10, 20
-Yogurt, 15, 25
-Rice, 28, 15
-Shampoo, 10, 20
-Indomie, 15, 30
-Juice, 20, 30
-Potato, 25, 20
-Pasta, 11, 30
-Toothpaste, 20, 30
-Apple, 200, 30
-Bread, 100, 100
-Cheese, 30, 40
-Chicken, 12, 18
-Salad, 18, 12
-Peanut Butter, 15, 25
-Orange, 50, 60
-Tomato Sauce, 20, 30
-Lettuce, 10, 15
-Water Bottles, 40, 50
-Soda, 25, 35
+Milk, 3, 4
+Yogurt, 4, 5
+Rice, 3, 7
+Shampoo, 4, 2
+Indomie, 4, 7
+Juice, 5, 2
+Potato, 5, 2
+Pasta, 6, 3
+Toothpaste, 3, 6
+Apple, 6, 4
+Bread, 5, 10
+Cheese, 5, 5
+Chicken, 3, 3
+Salad, 5, 10
+Peanut Butter, 3, 7
+Orange, 3, 8
+Tomato Sauce, 5, 10
+Lettuce, 5, 10
+Water Bottles, 3, 7
+Soda, 4, 9
 Dish Soap, 20, 25
 Cookies, 35, 40
 Canned Soup, 15, 20

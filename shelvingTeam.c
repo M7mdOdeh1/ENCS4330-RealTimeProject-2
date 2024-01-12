@@ -13,7 +13,8 @@ int msgqid_team, msgqid_gui;
 PositionUpdateMessage *positionUpdateMsg;
 ProductRequestMessage *requestMsg;
 struct AllProducts *ptrAllProducts;
-int timeToFillCart = 1;
+int timeToFillCart,
+    employeeFillTime;
 
 int rollingCartAmount, // amount of the product on the rolling cart
     productIndex,  // current product index
@@ -26,7 +27,7 @@ pthread_mutex_t mutex_rollingCartAmount = PTHREAD_MUTEX_INITIALIZER;
 
 int main (int argc, char *argv[]) {
     
-    if (argc != 4) {
+    if (argc != 6) {
         fprintf(stderr, "Usage: %s team_id\n", *argv);
         exit(1);
     }
@@ -34,6 +35,8 @@ int main (int argc, char *argv[]) {
     team_id = atoi(argv[1]);
     num_employees = atoi(argv[2]);
     productAmountThresh = atoi(argv[3]);
+    timeToFillCart = atoi(argv[4]);
+    employeeFillTime = atoi(argv[5]);
 
     pthread_t employees[num_employees];
 
@@ -41,7 +44,7 @@ int main (int argc, char *argv[]) {
     msgqid_gui = createMessageQueue(MSGQKEY_GUI, "shelvingteam.c");
 
     // send a message to the gui process to indicate that a new team is created
-    sendPositionUpdateMsg(-1, -1);
+    sendPositionUpdateMsg(num_employees, -1, 0); // state 0: team is created
 
     printf("Team %d: %d employees\n", team_id, num_employees);
     fflush(stdout);
@@ -64,23 +67,30 @@ int main (int argc, char *argv[]) {
  
         int customer_id = requestMsg->msg_from;
         productIndex = requestMsg->index;
-
-        // send a message to the gui process to indicate that the team is moving to the product
-        sendPositionUpdateMsg(-1, productIndex);
-        sleep(2);
     
         printf("Team %d: received request for product index %d\n", team_id, productIndex);
         fflush(stdout);
         
         // check if the product is available
         if (ptrAllProducts->products[productIndex].storageAmount > 0) {
+            // send a message to the gui process to indicate that the team is moving to the product
+            sendPositionUpdateMsg(productIndex, -1, 1); // state 1: team is moving to the product in the storage
+
             /* the manager brings the necessary amount of 
             product from the storage to the rolling cart */
             rollingCartAmount = bringProductFromStorage(productIndex);
-            
+
+            /* 
+            send a message to the gui process to indicate that the manger has finished
+             bringing the product and move the rolling cart to the employee
+            */
+            sendPositionUpdateMsg(productIndex, rollingCartAmount, 2); // state 2: manager is moving to the employee
+
+            int employee_id[num_employees];
             // create thread for each employee
             for (int i = 0; i < num_employees; i++) {
-                pthread_create(&employees[i], NULL, (void*)employee, (void*)&i);
+                employee_id[i] = i;
+                pthread_create(&employees[i], NULL, (void*)employee, &employee_id[i]);
             }
 
             // wait for the threads to finish
@@ -139,10 +149,13 @@ int bringProductFromStorage(int productIndex) {
     int onShelvesAmount = ptrAllProducts->products[productIndex].onShelvesAmount;
     int shelfCapacity = ptrAllProducts->products[productIndex].shelfCapacity;
 
+    sleep(timeToFillCart);
+
     // if the amount of the product in the storage is more than the shelf capacity
     if (storageAmount + onShelvesAmount >= shelfCapacity) {
+        int amountToBring = shelfCapacity - onShelvesAmount;
         ptrAllProducts->products[productIndex].storageAmount = storageAmount + onShelvesAmount - shelfCapacity;
-        return shelfCapacity - onShelvesAmount;
+        return amountToBring;
     }
     else { // if the amount of the product in the storage is less than the shelf capacity
         ptrAllProducts->products[productIndex].storageAmount = 0;
@@ -161,7 +174,7 @@ void employee(int *employee_id) {
     // while there is still product on the rolling cart
     while (1) {
         pthread_mutex_lock(&mutex_rollingCartAmount);
-       
+
 
         // Check if there is a product on the rolling cart
         if (rollingCartAmount <= 0) {
@@ -172,8 +185,17 @@ void employee(int *employee_id) {
         // Decrease the amount of the product on the rolling cart
         rollingCartAmount--;
 
+        // send a message to the gui process to indicate that the employee is moving to the shelf
+        sendPositionUpdateMsg(num_employees, productIndex, 3); // state 3: employee is moving to the shelf
+
+        // sleep the thread to simulate the employee working
+        sleep(employeeFillTime);
+
         // Increase the amount of the product on the shelves
         ptrAllProducts->products[productIndex].onShelvesAmount++;
+
+        // send a message to the gui process to indicate that the employee has finished working
+        sendPositionUpdateMsg(num_employees, -1, 4); // state 4: employee has finished working
 
         pthread_mutex_unlock(&mutex_rollingCartAmount);
     }
@@ -215,14 +237,14 @@ void deleteProduct(int index) {
 /*
 function to send a message to the gui process to update the position of the team
 */
-void sendPositionUpdateMsg(int x, int y) {
+void sendPositionUpdateMsg(int x, int y, int state) {
     positionUpdateMsg = (PositionUpdateMessage *) malloc(sizeof(PositionUpdateMessage));
     positionUpdateMsg->msgType = MSG_POS_UPDATE;
     positionUpdateMsg->personType = 2;
     positionUpdateMsg->id = team_id;
-    positionUpdateMsg->x = -1;
-    positionUpdateMsg->y = num_employees;
-    positionUpdateMsg->state = 0;
+    positionUpdateMsg->x = x;
+    positionUpdateMsg->y = y;
+    positionUpdateMsg->state = state;
     
     if (msgsnd(msgqid_gui, positionUpdateMsg, sizeof(PositionUpdateMessage), 0) == -1) {
         perror("msgsnd -- shelvingteam.c -- sendPositionUpdateMsg");

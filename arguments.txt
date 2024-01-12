@@ -1,6 +1,8 @@
-numProducts			20
+numProducts			8
 numShelvingTeams		5
-productAmountThresh	10
+productAmountThresh	3
 custArrivalRate		2,6
-simulationThresh	2
-
+simulationThresh	5
+managerTimeToFillCart   1
+employeeFillTime    1
+custBuyTime         1,1
