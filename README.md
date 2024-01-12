@@ -22,11 +22,14 @@ This project simulates a supermarket environment where employees (shelving teams
 
 ### Executing Program
 1. Compile the project using the provided `Makefile`:
-```c++
+```Makefile
 make
 ```
   
 2. Run the simulation:
+```Makefile
+make run
+```
 
 
 
