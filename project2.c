@@ -8,7 +8,7 @@
 */
 
 # include "local.h"
-# include "local2.h"
+# include "ipcs.h"
 # include "gui.h"
 
 int numProducts;
@@ -73,6 +73,28 @@ int main(int argc, char *argv[]){
     
     // initialize IPCs resources (shared memory, semaphores, message queues)
     initializeIPCResources();
+
+    /*
+    fork and exec the gui process
+    */
+    pid_t pid_gui = fork();
+    if (pid_gui == -1) {
+        perror("fork");
+        exit(1);
+    } else if (pid_gui == 0) {
+        /*
+        child process
+        */
+
+        // exec the gui process
+        execlp("./gui", "./gui", NULL);
+        perror("execlp");
+        exit(1);
+    } else {
+        // parent process
+        printf("GUI process created\n");
+        fflush(stdout);
+    }
     
     /*
     fork and exec the shelf teams processes
@@ -110,28 +132,6 @@ int main(int argc, char *argv[]){
         } else {
             teamsPids[i] = pid_team;
         }
-    }
-
-    /*
-    fork and exec the gui process
-    */
-    pid_t pid_gui = fork();
-    if (pid_gui == -1) {
-        perror("fork");
-        exit(1);
-    } else if (pid_gui == 0) {
-        /*
-        child process
-        */
-
-        // exec the gui process
-        execlp("./gui", "./gui", NULL);
-        perror("execlp");
-        exit(1);
-    } else {
-        // parent process
-        printf("GUI process created\n");
-        fflush(stdout);
     }
 
 

@@ -4,7 +4,7 @@ this file executes the customer process
 */
 
 #include "local.h"
-#include "local2.h"
+#include "ipcs.h"
 #include "gui.h" 
 
 void printProductInfo(struct Product product);
@@ -52,20 +52,7 @@ int main (int argc, char *argv[]) {
     semid_product = createSemaphore(SEMKEY_PRODUCT, 2, src.str);
 
 
-    positionUpdateMsg = (PositionUpdateMessage *) malloc(sizeof(PositionUpdateMessage));
-    positionUpdateMsg->msgType = MSG_POS_UPDATE;
-    positionUpdateMsg->personType = 1; // 1 for customer
-    positionUpdateMsg->id = customer_id;
-    positionUpdateMsg->x = -1;
-    positionUpdateMsg->y = -1;
-    positionUpdateMsg->state = 0;
-
-    fflush(stdout);
-    // send the message to the gui to create the customer
-    if (msgsnd(msgqid_gui, positionUpdateMsg, sizeof(PositionUpdateMessage), 0) == -1) {
-        perror("msgsnd -- customer.c");
-        exit(1);
-    }
+    sendPositionUpdateMsg(-1, -1);
 
     acquireSem(semid_product, 0, src.str);
 
@@ -109,6 +96,7 @@ void selectRandomProductsToBuy() {
         for (int j = 0; j < ptrAllProducts->numProducts; j++) {
             if (ptrAllProducts->products[j].ID == productID) {
 
+
                 // select the amount of the product to buy
                 int amount = randomInRange(1, ptrAllProducts->products[j].onShelvesAmount);
 
@@ -120,6 +108,10 @@ void selectRandomProductsToBuy() {
 
                 // print the info of the product after buying
                 printProductInfo(ptrAllProducts->products[j]);
+
+                // send a message to the gui to update the position of the customer
+                sendPositionUpdateMsg(-1, productID);
+                sleep(1);
                 
                 /* 
                  * if the amount of the product on shelves becomes less than the threshold
@@ -159,8 +151,8 @@ void selectRandomProductsToBuy() {
         
 
     }
-
-
+    // send a message to the gui to update the position of the customer
+    sendPositionUpdateMsg(1, -1);
 
 
 }
@@ -178,4 +170,22 @@ void printProductInfo(struct Product product) {
     printf("****************************************************************************************\n");
     printf("\n");
     fflush(stdout);
+}
+
+/*
+ * function to send a message to the gui to update the position of the customer
+*/
+void sendPositionUpdateMsg(int x, int y) {
+    positionUpdateMsg = (PositionUpdateMessage *) malloc(sizeof(PositionUpdateMessage));
+    positionUpdateMsg->msgType = MSG_POS_UPDATE;
+    positionUpdateMsg->personType = 1; // 1 for customer
+    positionUpdateMsg->id = customer_id;
+    positionUpdateMsg->x = x;
+    positionUpdateMsg->y = y;
+
+
+    if (msgsnd(msgqid_gui, positionUpdateMsg, sizeof(PositionUpdateMessage), 0) == -1) {
+        perror("msgsnd -- customer.c");
+        exit(1);
+    }
 }

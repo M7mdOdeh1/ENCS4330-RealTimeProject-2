@@ -1,6 +1,6 @@
 Milk, 10, 20
 Yogurt, 15, 25
-Rice, 8, 15
+Rice, 28, 15
 Shampoo, 10, 20
 Indomie, 15, 30
 Juice, 20, 30
@@ -11,7 +11,7 @@ Apple, 200, 30
 Bread, 100, 100
 Cheese, 30, 40
 Chicken, 12, 18
-Salad, 8, 12
+Salad, 18, 12
 Peanut Butter, 15, 25
 Orange, 50, 60
 Tomato Sauce, 20, 30

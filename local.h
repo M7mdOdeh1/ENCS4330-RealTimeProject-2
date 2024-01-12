@@ -8,8 +8,8 @@
 
 
 #define MAX_CUSTOMERS 200
-#define MAX_TEAMS 100
-#define MAX_PRODUCTS 100
+#define MAX_TEAMS 10
+#define MAX_PRODUCTS 20
 #define MAX_LINE_LENGTH 255
 #define SHKEY_TEAM 1111 // key for shared memory for pid of the teams
 #define SHKEY_PRODUCT 2222 // key for shared memory for all products

@@ -4,16 +4,22 @@ this file executes the shelving team process
 */
 
 #include "local.h"
-#include "local2.h"
+#include "ipcs.h"
+#include "gui.h"
 
 char *shmptr_product;
-int msgqid_team;
+int msgqid_team, msgqid_gui;
 
+PositionUpdateMessage *positionUpdateMsg;
 ProductRequestMessage *requestMsg;
 struct AllProducts *ptrAllProducts;
+int timeToFillCart = 1;
+
 int rollingCartAmount, // amount of the product on the rolling cart
     productIndex,  // current product index
-    productAmountThresh; 
+    productAmountThresh,
+    team_id,
+    num_employees;
 
 pthread_mutex_t mutex_rollingCartAmount = PTHREAD_MUTEX_INITIALIZER;
 
@@ -25,11 +31,17 @@ int main (int argc, char *argv[]) {
         exit(1);
     }
 
-    int team_id = atoi(argv[1]);
-    int num_employees = atoi(argv[2]);
+    team_id = atoi(argv[1]);
+    num_employees = atoi(argv[2]);
     productAmountThresh = atoi(argv[3]);
 
     pthread_t employees[num_employees];
+
+    // access the msg queue for the gui
+    msgqid_gui = createMessageQueue(MSGQKEY_GUI, "shelvingteam.c");
+
+    // send a message to the gui process to indicate that a new team is created
+    sendPositionUpdateMsg(-1, -1);
 
     printf("Team %d: %d employees\n", team_id, num_employees);
     fflush(stdout);
@@ -52,7 +64,11 @@ int main (int argc, char *argv[]) {
  
         int customer_id = requestMsg->msg_from;
         productIndex = requestMsg->index;
-            
+
+        // send a message to the gui process to indicate that the team is moving to the product
+        sendPositionUpdateMsg(-1, productIndex);
+        sleep(2);
+    
         printf("Team %d: received request for product index %d\n", team_id, productIndex);
         fflush(stdout);
         
@@ -193,5 +209,25 @@ void deleteProduct(int index) {
         }
         exit(1);
     }
+}
+
+
+/*
+function to send a message to the gui process to update the position of the team
+*/
+void sendPositionUpdateMsg(int x, int y) {
+    positionUpdateMsg = (PositionUpdateMessage *) malloc(sizeof(PositionUpdateMessage));
+    positionUpdateMsg->msgType = MSG_POS_UPDATE;
+    positionUpdateMsg->personType = 2;
+    positionUpdateMsg->id = team_id;
+    positionUpdateMsg->x = -1;
+    positionUpdateMsg->y = num_employees;
+    positionUpdateMsg->state = 0;
+    
+    if (msgsnd(msgqid_gui, positionUpdateMsg, sizeof(PositionUpdateMessage), 0) == -1) {
+        perror("msgsnd -- shelvingteam.c -- sendPositionUpdateMsg");
+        exit(1);
+    }
 
 }
+

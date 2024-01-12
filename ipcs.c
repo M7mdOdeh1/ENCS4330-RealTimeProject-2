@@ -1,7 +1,7 @@
 
 
 #include"local.h"
-#include"local2.h"
+#include"ipcs.h"
 
 struct sembuf acquire = {0, -1, SEM_UNDO}, 
               release = {0,  1, SEM_UNDO};
