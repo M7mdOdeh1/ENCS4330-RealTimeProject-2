@@ -10,12 +10,20 @@ This project simulates a supermarket environment where employees (shelving teams
 
 ## Getting Started
 
-### Dependencies
+## Dependencies
 - UNIX/Linux Operating System
 - GCC Compiler
 - POSIX Threads Library (pthread)
-- [Any additional libraries used, e.g., GUI libraries]
+- OpenGL Utility Toolkit (GLUT): For the graphical user interface.
+- OpenGL: Required for rendering in the GUI.
+- Standard Math Library (typically included in standard development environments)
 
+### Installing Dependencies
+- Ensure that GCC and the POSIX Threads Library are installed on your system. These are generally available by default on most UNIX/Linux systems.
+- For OpenGL and GLUT, you can install them using your system's package manager. For example, on Ubuntu, you can use:
+```shell
+sudo apt-get install freeglut3 freeglut3-dev
+```
 ### Installing
 - Clone the repository from GitHub.
 - Ensure all dependencies are installed on your system.
