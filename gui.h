@@ -28,6 +28,7 @@ int findProductIndex(int productID);
 void sendPositionUpdateMsg(int x, int y, int state);
 void moveTeam(int id, int x, int y, int state);
 void drawSouthAfricanFlag(float x, float y, float width, float height);
+void catchSIGUSR2(int signum);
 
 
 // Structure for both Custmers and Employees

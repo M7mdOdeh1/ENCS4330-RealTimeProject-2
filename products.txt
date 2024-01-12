@@ -1,8 +1,8 @@
-Milk, 3, 4
-Yogurt, 4, 5
-Rice, 3, 7
+Milk, 6, 10
+Yogurt, 5, 10
+Rice, 6, 11
 Shampoo, 4, 2
-Indomie, 4, 7
+Indomie, 4, 8
 Juice, 5, 2
 Potato, 5, 2
 Pasta, 6, 3

@@ -26,6 +26,7 @@ int isSimulationDone = 0;
 pid_t customersPids[MAX_CUSTOMERS]; // array to store the customers pids
 int customersPidsIndex = 0;
 pid_t teamsPids[MAX_TEAMS]; // array to store the teams pids
+pid_t pid_gui; // gui pid
 
 struct Team teams[MAX_TEAMS];
 struct AllProducts allProducts;
@@ -81,7 +82,7 @@ int main(int argc, char *argv[]){
     /*
     fork and exec the gui process
     */
-    pid_t pid_gui = fork();
+    pid_gui = fork();
     if (pid_gui == -1) {
         perror("fork");
         exit(1);
@@ -95,9 +96,9 @@ int main(int argc, char *argv[]){
         args[0] = "./gui";
         args[1] = (char *) malloc(sizeof(char) * 10);
         args[2] = NULL;
-        execvp(args[0], args);
         sprintf(args[1], "%d", productAmountThresh);
-
+        
+        execvp(args[0], args);
         perror("execvp -- gui");
 
         exit(1);
@@ -294,6 +295,13 @@ void catchSIGUSR1(int signum) {
     printf("**** Storage is out of stock ****\n");
     printf("*********************************\n");
     fflush(stdout);
+
+    // send a signal to the gui process to indicate that the storage is out of stock
+    if (kill(pid_gui, SIGUSR1) == -1) {
+        perror("kill -- SIGUSR1 -- project2.c");
+        exit(1);
+    }
+
     // set the flag to indicate that the simulation is done
     isSimulationDone = 1;
     exitProgram(signum);
@@ -306,6 +314,13 @@ void catchSIGALRM(int signum) {
     printf("**** Simulation time is over ****\n");
     printf("*********************************\n");
     fflush(stdout);
+
+    // send a signal to the gui process to indicate that the simulation time is over
+    if (kill(pid_gui, SIGUSR2) == -1) {
+        perror("kill -- SIGUSR2 -- project2.c");
+        exit(1);
+    }
+
     // set the flag to indicate that the simulation is done
     isSimulationDone = 1;
     exitProgram(signum);

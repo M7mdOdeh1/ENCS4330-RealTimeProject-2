@@ -90,7 +90,7 @@ int main (int argc, char *argv[]) {
             // create thread for each employee
             for (int i = 0; i < num_employees; i++) {
                 employee_id[i] = i;
-                pthread_create(&employees[i], NULL, (void*)employee, &employee_id[i]);
+                pthread_create(&employees[i], NULL, (void *)employee, (void *)&employee_id[i]);
             }
 
             // wait for the threads to finish
@@ -196,12 +196,12 @@ void employee(int *employee_id) {
 
         // send a message to the gui process to indicate that the employee has finished working
         sendPositionUpdateMsg(num_employees, -1, 4); // state 4: employee has finished working
+        sleep(0.1);
 
         pthread_mutex_unlock(&mutex_rollingCartAmount);
     }
     pthread_exit(NULL);
-
-    
+   
 }
 
 

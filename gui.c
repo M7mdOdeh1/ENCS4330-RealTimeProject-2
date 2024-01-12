@@ -13,9 +13,15 @@ PositionUpdateMessage *msg;
 char *shmptr_product;
 struct AllProducts *ptrAllProducts;
 int productAmountThresh;
+char endText[255];
+
+int employeeIndex = 1;
+int turn = 1;
+int temp1 = 0;
+int temp2 = 0; 
 
 // Main function
-int main(int argc, char **argv) {
+int main(int argc, char *argv[]) {
     productAmountThresh = atoi(argv[1]);
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
@@ -43,6 +49,18 @@ int main(int argc, char **argv) {
 
 // Function to initialize positions for customers and employees
 void initPositions() {
+
+    // singal hander for SIGUSR1
+    if (signal(SIGUSR1, catchSIGUSR1) == SIG_ERR) {
+        perror("signal -- gui.c");
+        exit(1);
+    }
+
+    // singal hander for SIGUSR2
+    if (signal(SIGUSR2, catchSIGUSR2) == SIG_ERR) {
+        perror("signal -- gui.c");
+        exit(1);
+    }
 
     // access the msg queue for the gui
     msgqid_gui = createMessageQueue(MSGQKEY_GUI, "gui.c");
@@ -198,6 +216,11 @@ void drawSupermarketLayout(){
             continue;
         }
 
+        // if the product below the threshold, make the shelf red
+        if (ptrAllProducts->products[productIndex].onShelvesAmount < productAmountThresh) {
+            drawRectangle(280.0f, 36.0f + i * 44.0f, 20.0f, 40.0f, 1.0f, 0.0f, 0.0f); //  shelves
+        } 
+
         char name[255];
         sprintf(name, "%s", ptrAllProducts->products[productIndex].Name.str);   
         // draw product name in bold
@@ -206,12 +229,7 @@ void drawSupermarketLayout(){
         char amount[255];
         sprintf(amount, "%d", ptrAllProducts->products[productIndex].onShelvesAmount);
         // draw product amount in black
-        drawText(amount, 280.0f, 45.0f + i * 44.0f, GLUT_BITMAP_HELVETICA_12, 0.0f, 0.0f, 0.0f);
-
-        // if the product below the threshold, make the shelf red
-        if (ptrAllProducts->products[productIndex].onShelvesAmount < productAmountThresh) {
-            drawRectangle(280.0f, 36.0f + i * 44.0f, 20.0f, 40.0f, 0.9f, 0.1f, 0.1f); //  shelves
-        }
+        drawText(amount, 280.0f, 45.0f + i * 44.0f, GLUT_BITMAP_HELVETICA_12, 0.0f, 0.0f, 0.0f);    
 
     }
     for (int i = MAX_PRODUCTS/2 +1 ; i <= MAX_PRODUCTS; i++) {
@@ -222,6 +240,9 @@ void drawSupermarketLayout(){
         if (productIndex == -1) {
             continue;
         }
+        if (ptrAllProducts->products[productIndex].onShelvesAmount < productAmountThresh) {
+            drawRectangle(500.0f, 36.0f + (i - MAX_PRODUCTS/2) * 44.0f, 20.0f, 40.0f, 1.0f, 0.0f, 0.0f); //  shelves
+        } 
 
         char name[255];
         sprintf(name, "%s", ptrAllProducts->products[productIndex].Name.str);
@@ -231,10 +252,7 @@ void drawSupermarketLayout(){
         char amount[255];
         sprintf(amount, "%d", ptrAllProducts->products[productIndex].onShelvesAmount);
         drawText(amount, 500.0f, 45.0f + (i - MAX_PRODUCTS/2) * 44.0f, GLUT_BITMAP_HELVETICA_12, 0.0f, 0.0f, 0.0f);
-
-        if (ptrAllProducts->products[productIndex].onShelvesAmount < productAmountThresh) {
-            drawRectangle(500.0f, 36.0f + (i - MAX_PRODUCTS/2) * 44.0f, 20.0f, 40.0f, 0.9f, 0.1f, 0.1f); //  shelves
-        }
+        
    
     }
     /*
@@ -255,7 +273,8 @@ void drawSupermarketLayout(){
         drawText(amount, teams[i].employees[0].x + 20.0f, teams[i].employees[0].y, GLUT_BITMAP_HELVETICA_12, 1.0f, 1.0f, 1.0f);
     }
     
-    
+    // draw the end text
+    drawText(endText, 600.0f, 550.0f, GLUT_BITMAP_TIMES_ROMAN_24, 1.0f, 1.0f, 1.0f);
 
     //drawArrowWithText();
 }
@@ -294,8 +313,7 @@ void display() {
     glutSwapBuffers();
 }
 
-int temp1 = 0;
-int temp2 = 0; 
+
 // move the customer
 void moveCustomer(int id, int x, int y) {
     if (x<0 && y<0) {
@@ -333,8 +351,7 @@ void moveCustomer(int id, int x, int y) {
     }
 }
 
-int employeeIndex = 1;
-int turn = 1;
+
 
 void moveTeam(int id, int x, int y, int state) {
     // if the team is created
@@ -378,7 +395,6 @@ void moveTeam(int id, int x, int y, int state) {
     }
     // if the employee start working 
     else if(state == 3 || state == 4){
-        printf("employeeIndex = %d\n", employeeIndex);
         if (turn ==1){ 
             int productID = ptrAllProducts->products[y].ID;
             // move the employee to the product shelf
@@ -399,10 +415,10 @@ void moveTeam(int id, int x, int y, int state) {
             teams[id].employees[employeeIndex].y = 200.0f + id * 50.0f;
 
             employeeIndex++;
-            
-            
+               
         }
-        if (employeeIndex == x+1){
+
+        if (employeeIndex >= x+1){
                 employeeIndex = 1;
             }
         turn *= -1;
@@ -510,4 +526,17 @@ void drawSouthAfricanFlag(float x, float y, float width, float height) {
     glVertex2f(x, y + 7 * height / 10);
     glVertex2f(x + width / 4, y + height / 2);  
     glEnd();
+}
+
+
+void catchSIGUSR1(int sigNum) {
+    // change the end text
+    sprintf(endText, "Storage is out of stock");
+
+}
+
+void catchSIGUSR2(int sigNum) {
+    // change the end text
+    sprintf(endText, "Simulation time threshold reached");
+
 }
