@@ -66,3 +66,6 @@ Any command line syntax or options can be detailed here, if applicable.
 - Course Instructor: Dr. Hanna Bullata
 - Birzeit University - Faculty of Engineering and Technology
 
+## License
+This project is freely available under an open license for any use.
+
