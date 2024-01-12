@@ -24,6 +24,8 @@ This project simulates a supermarket environment where employees (shelving teams
 ```shell
 sudo apt-get install freeglut3 freeglut3-dev
 ```
+- Ensure that the Standard Math Library is available. This is typically included in the standard development environment.
+
 ### Installing
 - Clone the repository from GitHub.
 - Ensure all dependencies are installed on your system.
